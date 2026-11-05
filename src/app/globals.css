@@ -1139,20 +1139,22 @@ h1 {
 }
 .report-paper-heading {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 26px 28px 20px;
+  padding: 12px 22px;
   border-bottom: 2px solid var(--brand);
-  gap: 20px;
+  gap: 12px;
 }
-.report-code {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--brand);
+.report-heading-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
 }
 .report-paper-heading h1 {
-  font-size: 26px;
-  letter-spacing: 2px;
-  margin: 10px 0;
+  font-size: 18px;
+  line-height: 26px;
+  margin: 0;
 }
 .report-paper-heading p {
   font-size: 11px;
@@ -1177,6 +1179,7 @@ h1 {
 }
 .report-stamp .ant-tag {
   font-size: 9px;
+  margin: 0;
 }
 .report-meta {
   display: flex;
@@ -2081,7 +2084,7 @@ h1 {
     font-size: 18px;
   }
   .report-paper-heading {
-    padding: 20px;
+    padding: 10px 20px;
   }
   .report-meta {
     padding: 12px 20px;
@@ -2121,11 +2124,10 @@ h1 {
     gap: 12px;
   }
   .report-paper-heading {
-    padding: 18px 15px;
+    padding: 10px 15px;
   }
   .report-paper-heading h1 {
-    font-size: 22px;
-    letter-spacing: 1px;
+    font-size: 17px;
   }
   .report-paper-heading p {
     font-size: 10px;

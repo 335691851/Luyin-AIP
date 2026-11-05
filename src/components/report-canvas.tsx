@@ -400,16 +400,11 @@ export default function ReportCanvas({
             />
           )}
           <header className="report-paper-heading">
-            <div>
-              <span className="report-code">
-                {focus ? "PROFIT" : "SALES"} REPORT / {month.replace("-", ".")}
-              </span>
+            <div className="report-heading-summary">
               <h1>{template.label}</h1>
               <p>{template.subtitle}</p>
             </div>
             <div className="report-stamp">
-              <b>鲁盐集团</b>
-              <span>管理口径 · 固定模板</span>
               <Tag color={demo ? "gold" : "default"}>
                 {demo ? "演示报表" : "授权数据"}
               </Tag>
