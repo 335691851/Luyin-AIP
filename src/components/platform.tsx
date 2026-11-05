@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 const GovernanceWorkbench = dynamic(() => import("./governance-workbench"));
@@ -507,10 +508,15 @@ function Workspace({
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="seal">鲁</span>
-          <div>
-            <b>鲁盐集团</b>
-            <small>LUYAN GROUP</small>
+          <div className="app-company-logo">
+            <Image
+              src="/luyin-investment-logo.png"
+              alt="鲁银集团 · 鲁银投资 LUYIN INVESTMENT"
+              width={172}
+              height={58}
+              unoptimized
+              preload
+            />
           </div>
           <span className="brand-divider" />
           <strong>鲁银智能化平台</strong>
