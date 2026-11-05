@@ -5,6 +5,7 @@ import { appDb, erpDb } from "@/server/db";
 import { can } from "@/lib/access";
 import { sameOrigin } from "@/lib/request-origin";
 import { intelligence, modelText } from "@/server/model";
+import { pricingHistory } from "@/server/pricing-history";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 async function account(
@@ -23,11 +24,16 @@ export async function GET(req: Request) {
       throw Error("FORBIDDEN");
     const [rows, history, materials] = await Promise.all([
       appDb()`select p.*,c.name as company,p.created_at::text from platform.price_application p join public.company c on c.id=p.company_id where p.company_id=any(${u.companyIds}::int[]) and (${company}='' or c.name=${company}) order by p.created_at desc limit 300`,
-      erpDb()`select p.id::text,p.application_no,p.applicant_company_name as company,p.material_name,p.requested_quantity_ton,p.original_price,p.requested_price,p.approved_price,p.status,p.applied_at::text,p.application_reason,p.review_note,p.is_simulated,p.price_includes_tax from public.pricechangerecord p join public.company c on c.name=p.applicant_company_name where c.id=any(${u.companyIds}::int[]) and (${company}='' or c.name=${company}) order by p.applied_at desc limit 1500`,
+      pricingHistory(erpDb(), u.companyIds, company),
       erpDb()`select m.id,m.code,m.name,u.name as unit from public.material m join public.uom u on u.id=m.uom_id where m.kind='product' and u.name='吨' order by m.name limit 2000`,
     ]);
     return Response.json(
-      { rows, history, materials },
+      {
+        rows,
+        history: history.rows,
+        materials,
+        warnings: history.warning ? [history.warning] : [],
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {
@@ -102,15 +108,21 @@ export async function POST(req: Request) {
       const [sales, stocks, history] = await Promise.all([
         erpDb()`select l.material_id,count(*) as lines,sum(l.qty) qty,sum(l.net_cents)/100.0 revenue,min(d.bill_date) as first_date,max(d.bill_date) as last_date from public.document d join public.document_line l on l.document_id=d.id where d.company_id=${batch.company_id} and d.type_code='sales_order' and d.status in ('approved','posted','closed') and d.bill_date::date>=current_date-interval '30 days' and d.bill_date::date<=current_date and l.material_id=any(${ids}::int[]) group by l.material_id`,
         erpDb()`select b.material_id,c.name as company,c.kind,sum(b.qty) qty,sum(b.reserved_qty) reserved from public.stock_balance b join public.company c on c.id=b.company_id where (b.company_id=${batch.company_id} or c.kind='生产法人') and b.company_id=any(${u.companyIds}::int[]) and b.material_id=any(${ids}::int[]) group by b.material_id,c.name,c.kind`,
-        erpDb()`select application_no,material_name,requested_price,approved_price,applied_at,status,is_simulated from public.pricechangerecord where applicant_company_name=${batch.company} and material_name=any(${lines.map((l) => l.product)}::text[]) order by applied_at desc limit 30`,
+        pricingHistory(
+          erpDb(),
+          u.companyIds,
+          batch.company,
+          lines.map((l) => l.product),
+        ),
       ]);
       const evidence = {
         applicant: batch.company,
         lines,
         sales30Days: sales,
         inventory: stocks,
-        history,
+        history: history.rows,
         missing: [
+          ...(history.warning ? [history.warning] : []),
           "财务定义且带有效期的集团到合资公司内部结算价尚未接入",
           "库存余额表缺少快照日，工厂库存未建立指定供货工厂映射",
           "历史申请原件与申请理由证据真实性未核实",

@@ -60,6 +60,7 @@ export default function LivePricing({
     rows: Batch[];
     history: any[];
     materials: any[];
+    warnings?: string[];
   }>({ rows: [], history: [], materials: [] });
   const [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -131,6 +132,9 @@ export default function LivePricing({
   return (
     <>
       {error && <Alert type="error" title={error} />}
+      {data.warnings?.map((warning) => (
+        <Alert key={warning} type="warning" showIcon title={warning} />
+      ))}
       <div className="panel-title">
         <Tabs
           activeKey={tab}
