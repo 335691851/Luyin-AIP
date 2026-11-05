@@ -1096,6 +1096,55 @@ h1 {
   margin-bottom: 16px;
   gap: 20px;
 }
+.profit-insight {
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border: 1px solid #ead5d7;
+  border-left: 3px solid var(--brand);
+  border-radius: 6px;
+  background: linear-gradient(110deg, #fff9f9, #fff);
+}
+.profit-insight-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.profit-insight-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--brand);
+  font-size: 14px;
+}
+.profit-insight-heading > span,
+.profit-insight small {
+  color: #8b919c;
+  font-size: 10px;
+}
+.profit-insight-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+}
+.profit-insight p {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #526071;
+}
+.profit-insight p b {
+  color: #29394c;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .profit-insight-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .report-template-bar {
   display: flex;
   align-items: center;

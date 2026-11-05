@@ -6,6 +6,7 @@ import { DownloadOutlined, BarChartOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { buildReport } from "@/lib/report-model";
 import type { Sale, ReportRow, Dimension } from "@/lib/report-model";
+import ProfitInsight from "./profit-insight";
 const DailySalesReport = dynamic(() => import("./daily-sales-report"));
 const Chart = dynamic(() => import("./report-chart"), {
   ssr: false,
@@ -321,6 +322,17 @@ export default function ReportCanvas({
   };
   return (
     <div className={`report-studio report-${variant}`}>
+      {focus && (
+        <ProfitInsight
+          sales={sales}
+          month={month}
+          company={company}
+          search={search}
+          loading={loading}
+          error={errorMessage}
+          demo={demo}
+        />
+      )}
       <div className="report-template-bar">
         <div
           role="tablist"
