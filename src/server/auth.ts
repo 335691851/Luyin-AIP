@@ -14,6 +14,15 @@ export async function authClient() {
     key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new Error("AUTH_NOT_CONFIGURED");
   return createServerClient(url, key, {
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: init?.signal
+            ? AbortSignal.any([init.signal, AbortSignal.timeout(15000)])
+            : AbortSignal.timeout(15000),
+        }),
+    },
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (items) =>
@@ -35,15 +44,31 @@ export const identity = cache(async function identity() {
     };
   }
   const client = await authClient();
-  const { data, error } = await client.auth.getUser();
-  if (error || !data.user) throw new Error("UNAUTHORIZED");
+  // Verify JWT signature/expiry through Supabase JWKS; memberships below remain fresh DB reads.
+  const { data, error } = await client.auth.getClaims();
+  const claims = data?.claims;
+  const issuer = `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "")}/auth/v1`;
+  if (
+    error ||
+    !claims?.sub ||
+    claims.iss !== issuer ||
+    !(
+      claims.aud === "authenticated" ||
+      (Array.isArray(claims.aud) && claims.aud.includes("authenticated"))
+    )
+  )
+    throw new Error("UNAUTHORIZED");
+  const verifiedUser = {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : "",
+  };
   const memberships =
     await appDb()`select m.company_id,m.role,r.name as role_name,r.description,r.permissions,
       p.display_name,p.home_company_id,p.scope,p.department
       from platform.membership m
       join platform.user_profile p on p.user_id=m.user_id and p.role_id=m.role
       join platform.role r on r.id=m.role
-      where m.user_id=${data.user.id} and m.enabled=true and p.enabled=true and r.enabled=true`;
+      where m.user_id=${verifiedUser.id} and m.enabled=true and p.enabled=true and r.enabled=true`;
   if (!memberships.length || new Set(memberships.map((m) => m.role)).size !== 1)
     throw new Error("FORBIDDEN");
   const permissions = [
@@ -68,9 +93,9 @@ export const identity = cache(async function identity() {
     demo: false,
     preview: false,
     user: {
-      id: data.user.id,
+      id: verifiedUser.id,
       name: String(memberships[0].display_name),
-      email: data.user.email ?? "",
+      email: verifiedUser.email ?? "",
       company: String(
         names.find(
           (n) => Number(n.id) === Number(memberships[0].home_company_id),
@@ -86,7 +111,7 @@ export const identity = cache(async function identity() {
     permissions,
   };
   return {
-    id: data.user.id,
+    id: verifiedUser.id,
     name: access.user.name,
     admin: permissions.includes("admin.manage"),
     companyIds: ids,

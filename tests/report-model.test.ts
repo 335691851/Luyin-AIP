@@ -16,6 +16,32 @@ const base: Sale = {
   status: "已审核",
 };
 describe("report tables and charts share consistent aggregates", () => {
+  it("aggregates ERP total line cost by order without reallocating expenses", () => {
+    const [r] = buildReport(
+      [
+        {
+          ...base,
+          number: "SO-1",
+          qty: 3,
+          unitCost: 333.3333333,
+          costAmount: 1000,
+        },
+        {
+          ...base,
+          id: "b",
+          number: "SO-1",
+          qty: 7,
+          unitCost: 142.8571428,
+          costAmount: 1000,
+        },
+      ],
+      "order",
+    );
+    expect(r.name).toBe("法人甲 / SO-1");
+    expect(r.count).toBe(2);
+    expect(r.cost).toBe(2000);
+    expect(r.profit).toBe(18000);
+  });
   it("calculates weighted margin using total revenue instead of averaging row margins", () => {
     const [r] = buildReport(
       [base, { ...base, id: "b", revenue: 20000, qty: 10, unitCost: 1000 }],

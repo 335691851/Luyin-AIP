@@ -6,7 +6,7 @@ export function erpDb() {
   const url = process.env.ERP_READONLY_DATABASE_URL;
   if (!url) throw new Error("ERP_DATABASE_NOT_CONFIGURED");
   return (erp ??= postgres(url, {
-    max: 1,
+    max: 3,
     prepare: false,
     ssl: "require",
     connect_timeout: 10,

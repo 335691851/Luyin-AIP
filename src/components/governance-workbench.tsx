@@ -1,4 +1,6 @@
 "use client";
+import GovernanceChat from "./governance-chat";
+import ContractRisk from "./contract-risk";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -14,6 +16,7 @@ import {
   Table,
   Tag,
   Timeline,
+  Upload,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -64,6 +67,8 @@ export default function GovernanceWorkbench({
     [busy, setBusy] = useState(false),
     [action, setAction] = useState(""),
     [note, setNote] = useState("");
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [analysis, setAnalysis] = useState("");
   const [form] = Form.useForm();
   const load = async (signal?: AbortSignal) => {
     const ticket = ++requestSequence.current;
@@ -84,6 +89,7 @@ export default function GovernanceWorkbench({
       if (!signal?.aborted && ticket === requestSequence.current) {
         setRows(d.rows);
         setEvents(d.events);
+        setAttachments(d.attachments || []);
       }
     } catch (e) {
       if (!signal?.aborted && ticket === requestSequence.current)
@@ -139,7 +145,24 @@ export default function GovernanceWorkbench({
   const selectedRows = rows.filter(
     (r) =>
       (!company || r.company === company) &&
-      (!dataSource || r.data_source === dataSource),
+      (!dataSource || r.data_source === dataSource) &&
+      (page === "archives"
+        ? r.item_kind === "archive"
+        : page === "policies" || page === "assistant"
+          ? true
+          : view === "group"
+            ? page === "risks"
+              ? r.item_kind === "important_risk" && r.severity === "重要"
+              : page === "reviews"
+                ? r.item_kind === "action" &&
+                  ["待审核", "已归档", "待补正", "已驳回"].includes(r.status)
+                : page === "contracts"
+                  ? r.item_kind === "contract_risk"
+                  : r.item_kind === "important_risk" ||
+                    (r.item_kind === "action" && r.status === "待审核")
+            : page === "rectification"
+              ? r.item_kind === "rectification"
+              : r.item_kind === "action"),
   );
   const terminal = ["已归档", "已闭环", "已驳回"];
   const visible = selectedRows.filter(
@@ -149,18 +172,23 @@ export default function GovernanceWorkbench({
         [r.title, r.company, r.owner, r.category, r.finding]
           .join(" ")
           .includes(search)) &&
-      (page !== "contracts" || r.title.includes("合同")) &&
       (!categoryMap[page] || r.category === categoryMap[page]) &&
       (!filter || r.status === filter) &&
-      (page !== "reviews" || ["待审核", "整改待验收"].includes(r.status)) &&
-      (!["risks", "rectification"].includes(page) ||
-        ["需整改", "整改待验收", "待补正"].includes(r.status)),
+      true,
   );
-  const actions = active
-    ? (governanceTransitions[view] as Record<string, Record<string, string>>)[
-        active.status
-      ] || {}
+  const actions: Record<string, string> = active
+    ? {
+        ...((
+          governanceTransitions[view] as Record<string, Record<string, string>>
+        )[active.status] || {}),
+      }
     : {};
+  if (
+    active?.category !== "重大事项程序" &&
+    active?.severity !== "重要" &&
+    !active?.payload?.requiresGroupReview
+  )
+    delete actions["提请集团审核"];
   const allowed = view === "group" ? canReview : canCreate;
   const columns: ColumnsType<GovernanceItem> = [
     {
@@ -199,13 +227,14 @@ export default function GovernanceWorkbench({
       ),
     },
     {
-      title: view === "group" ? "审核 / 督办" : "办理 / 反馈",
+      title: view === "group" ? "审核 / 处置" : "办理 / 反馈",
       width: 130,
       render: (_, r) => (
         <Button
           type="link"
           onClick={() => {
             setActive(r);
+            setAnalysis("");
             setAction("");
             setNote("");
           }}
@@ -215,7 +244,55 @@ export default function GovernanceWorkbench({
       ),
     },
   ];
-  if (["policies", "assistant"].includes(page)) {
+  if (page === "assistant")
+    return <GovernanceChat key={company} company={company} />;
+  if (page === "archives")
+    return (
+      <section className="panel">
+        <Tag color="orange">{company}治理档案 · 演练样例 · 只读</Tag>
+        <h2>公司治理档案与核心章程</h2>
+        <Alert
+          type="info"
+          title="以下为规范性结构样例，供治理动作生成与流程演练；尚未经股东会确认或替换为正式有效文件。"
+        />
+        <Table
+          rowKey="id"
+          loading={loading}
+          dataSource={selectedRows}
+          pagination={false}
+          columns={[
+            { title: "规范文件", dataIndex: "title" },
+            { title: "版本", render: (_, r) => r.payload?.version || "演练版" },
+            {
+              title: "核心章程与治理要求",
+              render: (_, r) => (
+                <div style={{ whiteSpace: "pre-wrap" }}>
+                  {r.payload?.content || r.basis}
+                  <p>
+                    <a
+                      download={r.payload?.filename || "治理档案样例.md"}
+                      href={
+                        "data:text/plain;charset=utf-8," +
+                        encodeURIComponent(
+                          "# " +
+                            r.title +
+                            "\n演练样例，未确认正式生效\n" +
+                            (r.payload?.content || r.basis),
+                        )
+                      }
+                    >
+                      下载规范文件样例
+                    </a>
+                  </p>
+                </div>
+              ),
+            },
+            { title: "必备材料", dataIndex: "materials" },
+          ]}
+        />
+      </section>
+    );
+  if (page === "policies") {
     const refs = new Map<
       string,
       { documentId: string; filename: string; usage: string; count: number }
@@ -266,8 +343,8 @@ export default function GovernanceWorkbench({
         </Tag>
         <span>
           {view === "group"
-            ? "关注下级单位问题、整改进度与待审核事项"
-            : "维护本企业治理资料，开展自查并反馈整改，不展示集团审批操作"}
+            ? "聚焦重要监管问题处置与提请集团审核的事项；一般自查由公司内部办理"
+            : "档案要求 → 治理动作 → 上传材料 → 公司审核 → 关联问题整改；重大事项提请集团审核"}
         </span>
       </div>
       {selectedRows.some((r) => r.data_source === "synthetic_graph") && (
@@ -278,26 +355,69 @@ export default function GovernanceWorkbench({
           title={`当前范围包含 ${selectedRows.filter((r) => r.data_source === "synthetic_graph").length} 条演练事项；可办理并留痕，不代表企业真实风险或违规`}
         />
       )}
+      {page === "contracts" && <ContractRisk />}
       <div className="kpi-row">
-        {[
-          [
-            view === "group" ? "监管范围事项" : "本企业治理事项",
-            selectedRows.length,
-          ],
-          [
-            "待集团审核",
-            selectedRows.filter((r) => r.status === "待审核").length,
-          ],
-          [
-            "待整改 / 补正",
-            selectedRows.filter((r) => ["需整改", "待补正"].includes(r.status))
-              .length,
-          ],
-          [
-            "整改待验收",
-            selectedRows.filter((r) => r.status === "整改待验收").length,
-          ],
-        ].map(([label, value]) => (
+        {(view === "group" && page === "risks"
+          ? [
+              ["重要监管问题", selectedRows.length],
+              [
+                "待处置",
+                selectedRows.filter((r) => r.status === "需整改").length,
+              ],
+              [
+                "待集团复核",
+                selectedRows.filter((r) => r.status === "整改待验收").length,
+              ],
+              [
+                "已处置",
+                selectedRows.filter((r) =>
+                  ["已归档", "已闭环"].includes(r.status),
+                ).length,
+              ],
+            ]
+          : view === "company"
+            ? [
+                [
+                  page === "rectification" ? "关联整改任务" : "本域管理动作",
+                  selectedRows.length,
+                ],
+                [
+                  "待公司响应",
+                  selectedRows.filter((r) => r.status === "待响应").length,
+                ],
+                [
+                  "待公司审核",
+                  selectedRows.filter((r) =>
+                    ["待公司审核", "整改待验收"].includes(r.status),
+                  ).length,
+                ],
+                [
+                  "整改 / 补正中",
+                  selectedRows.filter((r) =>
+                    ["需整改", "待补正"].includes(r.status),
+                  ).length,
+                ],
+              ]
+            : [
+                ["本页事项", selectedRows.length],
+                [
+                  "待集团审核",
+                  selectedRows.filter((r) => r.status === "待审核").length,
+                ],
+                [
+                  "待补正 / 整改",
+                  selectedRows.filter((r) =>
+                    ["需整改", "待补正"].includes(r.status),
+                  ).length,
+                ],
+                [
+                  "已完成",
+                  selectedRows.filter((r) =>
+                    ["已归档", "已闭环"].includes(r.status),
+                  ).length,
+                ],
+              ]
+        ).map(([label, value]) => (
           <div className="kpi" key={label}>
             <span className="kpi-label">{label}</span>
             <strong>{loading ? "—" : value}</strong>
@@ -310,9 +430,9 @@ export default function GovernanceWorkbench({
           <h2>
             {view === "group"
               ? page === "contracts"
-                ? "年度合同覆盖核查事项"
+                ? "已登记合同风险处置（含模拟情景）"
                 : page === "reviews"
-                  ? "待审核事项"
+                  ? "提请集团审核的治理事项"
                   : page === "risks"
                     ? "监管风险问题"
                     : page === "rectification"
@@ -322,6 +442,37 @@ export default function GovernanceWorkbench({
                 (page === "rectification" ? "整改反馈台账" : "企业治理工作台")}
           </h2>
           <Space wrap>
+            {view === "company" && page !== "rectification" && (
+              <Button
+                loading={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const r = await fetch("/api/governance", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        view,
+                        company,
+                        action: "generate",
+                      }),
+                    });
+                    const d = await r.json();
+                    if (!r.ok) throw Error(d.error);
+                    await load();
+                    message.success(
+                      `智能体已生成${d.created}项治理动作，同季度同类动作不重复生成`,
+                    );
+                  } catch (e) {
+                    message.error((e as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                ✦ 按档案生成治理动作
+              </Button>
+            )}
             <select
               className="governance-native-select"
               aria-label="治理数据来源"
@@ -339,6 +490,8 @@ export default function GovernanceWorkbench({
               onChange={setFilter}
               options={[
                 "",
+                "待响应",
+                "待公司审核",
                 "待审核",
                 "需整改",
                 "待补正",
@@ -351,16 +504,18 @@ export default function GovernanceWorkbench({
             <Button onClick={() => void load()}>重新读取</Button>
             <Button
               type="primary"
+              style={{
+                display:
+                  view === "group" && !["risks", "overview"].includes(page)
+                    ? "none"
+                    : undefined,
+              }}
               disabled={!allowed || !company}
               onClick={() => {
-                form.resetFields();
-                form.setFieldsValue({
-                  category: categoryMap[page] || governanceCategories[0],
-                });
                 setOpen(true);
               }}
             >
-              {view === "group" ? "发起监管问题" : "提交治理自查"}
+              {view === "group" ? "发起监管问题" : "提交治理管理动作"}
             </Button>
           </Space>
         </div>
@@ -387,7 +542,7 @@ export default function GovernanceWorkbench({
           />
         </Spin>
         <div className="table-note">
-          材料栏保留引用或办理说明，不代表文件已上传；平台审核不替代法人治理决议。所有操作留痕。
+          支持实际材料上传与下载（单份2MiB）；TXT/MD可供智能体读取，其他文件保存原件，由审核人核验。平台审核不替代法人治理决议。
         </div>
       </section>
       <Modal
@@ -396,6 +551,9 @@ export default function GovernanceWorkbench({
           view === "group" ? "登记下级单位监管问题" : "提交本企业治理与自查事项"
         }
         footer={null}
+        afterOpenChange={(visible) => {
+          if (visible) form.resetFields();
+        }}
         onCancel={() => !busy && setOpen(false)}
         width={700}
         destroyOnHidden
@@ -403,6 +561,9 @@ export default function GovernanceWorkbench({
         <p>责任单位：{company}</p>
         <Form
           form={form}
+          initialValues={{
+            category: categoryMap[page] || governanceCategories[1],
+          }}
           layout="vertical"
           onFinish={(v) => void submit({ action: "create", ...v })}
         >
@@ -412,10 +573,12 @@ export default function GovernanceWorkbench({
             rules={[{ required: true }]}
           >
             <Select
-              options={governanceCategories.map((value) => ({
-                value,
-                label: value,
-              }))}
+              options={governanceCategories
+                .filter((v) => v !== "公司治理档案")
+                .map((value) => ({
+                  value,
+                  label: value,
+                }))}
             />
           </Form.Item>
           <Form.Item
@@ -454,7 +617,7 @@ export default function GovernanceWorkbench({
           >
             <Input.TextArea
               rows={2}
-              placeholder="材料编号、受控存放位置或核查记录；此处不上传文件"
+              placeholder="材料编号、受控存放位置或核查记录；提交后可在详情上传原件"
             />
           </Form.Item>
           <Form.Item
@@ -514,6 +677,120 @@ export default function GovernanceWorkbench({
             <p className="governance-detail-text">{active.materials}</p>
             <h3>问题 / 自查结果</h3>
             <p className="governance-detail-text">{active.finding}</p>
+            {active.parent_id && (
+              <p>
+                关联来源：
+                <Button
+                  type="link"
+                  onClick={() => {
+                    const parent = rows.find(
+                      (r) => r.id === String(active.parent_id),
+                    );
+                    if (parent) {
+                      setActive(parent);
+                      setAnalysis("");
+                    }
+                  }}
+                >
+                  {rows.find((r) => r.id === String(active.parent_id))?.title ||
+                    `事项 #${active.parent_id}`}
+                </Button>
+              </p>
+            )}
+            {rows
+              .filter(
+                (r) =>
+                  String(r.parent_id) === active.id &&
+                  r.item_kind === "rectification",
+              )
+              .map((r) => (
+                <p key={r.id}>
+                  关联整改：
+                  <Button
+                    type="link"
+                    onClick={() => {
+                      setActive(r);
+                      setAnalysis("");
+                    }}
+                  >
+                    {r.title} · {r.status}
+                  </Button>
+                </p>
+              ))}
+            <h3>已上传材料</h3>
+            {attachments
+              .filter((a) => a.item_id === active.id)
+              .map((a) => (
+                <p key={a.id}>
+                  <a href={`/api/governance/files?id=${a.id}`}>{a.filename}</a>{" "}
+                  · {a.size_bytes}字节 · SHA256 {a.sha256.slice(0, 12)}
+                </p>
+              ))}
+            {view === "company" && canCreate && (
+              <Upload
+                accept=".pdf,.docx,.xlsx,.txt,.md,.png,.jpg,.jpeg"
+                showUploadList={false}
+                beforeUpload={async (file) => {
+                  const body = new FormData();
+                  body.append("file", file);
+                  body.append("itemId", active.id);
+                  try {
+                    const r = await fetch("/api/governance/files", {
+                      method: "POST",
+                      body,
+                    });
+                    const d = await r.json();
+                    if (!r.ok) throw Error(d.error);
+                    await load();
+                    message.success(
+                      d.parsed
+                        ? "材料已保存并读取文本"
+                        : "原件已保存，内容需人工核验",
+                    );
+                  } catch (e) {
+                    message.error((e as Error).message);
+                  }
+                  return false;
+                }}
+              >
+                <Button>上传材料（≤2MiB）</Button>
+              </Upload>
+            )}
+            <Button
+              loading={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const r = await fetch("/api/governance", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      view,
+                      company: active.company,
+                      action: "analyze",
+                      id: active.id,
+                    }),
+                  });
+                  const d = await r.json();
+                  if (!r.ok) throw Error(d.error);
+                  setAnalysis(d.text);
+                } catch (e) {
+                  message.error((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              ✦ 智能核查材料
+            </Button>
+            {analysis && (
+              <div
+                className="assistant-response"
+                style={{ whiteSpace: "pre-wrap" }}
+              >
+                {analysis}
+              </div>
+            )}
             <h3>办理记录</h3>
             <Timeline
               items={events
@@ -545,10 +822,21 @@ export default function GovernanceWorkbench({
                   placeholder="选择办理操作"
                   onChange={setAction}
                   style={{ width: "100%" }}
-                  options={Object.keys(actions).map((value) => ({
-                    value,
-                    label: value,
-                  }))}
+                  options={Object.keys(actions)
+                    .filter(
+                      (v) =>
+                        canReview ||
+                        ![
+                          "审核通过",
+                          "审核退回",
+                          "公司验收",
+                          "再次整改",
+                        ].includes(v),
+                    )
+                    .map((value) => ({
+                      value,
+                      label: value,
+                    }))}
                 />
                 <Input.TextArea
                   aria-label="治理办理说明"

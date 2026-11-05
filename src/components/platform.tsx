@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 const GovernanceWorkbench = dynamic(() => import("./governance-workbench"));
 const KnowledgeGraph = dynamic(() => import("./knowledge-graph"));
 const ReportCanvas = dynamic(() => import("./report-canvas"));
+const LivePricing = dynamic(() => import("./live-pricing"));
 const PriceBatches = dynamic(() => import("./price-batches"));
 import QuestionDrawer from "./question-drawer";
 const CoordinationCards = dynamic(() => import("./coordination-cards"));
@@ -247,12 +248,14 @@ function Workspace({
     workspace?.governanceCompany || "",
   )
     ? workspace!.governanceCompany
-    : companyOptions[0] || session?.user.company || "";
+    : companyOptions.find((c) => c.includes("泰安")) ||
+      companyOptions[0] ||
+      session?.user.company ||
+      "";
   const groupNav = [
     ["overview", "集团监管总览", <AppstoreOutlined key="go" />],
     ["risks", "监管风险问题", <SafetyCertificateOutlined key="ri" />],
     ["reviews", "治理事项审核", <AuditOutlined key="rv" />],
-    ["rectification", "整改督办", <ClockCircleOutlined key="gr" />],
     ...governanceNav.filter((n) =>
       ["contracts", "policies", "graph"].includes(n[0]),
     ),
@@ -264,7 +267,7 @@ function Workspace({
   const page =
     area === "governance" &&
     !activeGovernanceNav.some((n) => n[0] === requestedPage)
-      ? "overview"
+      ? activeGovernanceNav[0][0]
       : requestedPage;
   const nav = (
     area === "operation" ? operationNav : activeGovernanceNav
@@ -303,6 +306,11 @@ function Workspace({
   }, []);
   useEffect(() => {
     if (!status || !accessData) return;
+    if (status.mode !== "demo" && !["reports", "profit"].includes(page)) {
+      setSales([]);
+      setLoading(false);
+      return;
+    }
     if (
       area !== "operation" ||
       (!can(session, "sales.view") && !can(session, "profit.view"))
@@ -350,7 +358,7 @@ function Workspace({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [status, month, company, accessData, session, area, loadReport]);
+  }, [status, month, company, accessData, session, area, page, loadReport]);
   const persist = (
     newLines: PriceLine[],
     newRecords: GovernanceCase[],
@@ -670,7 +678,7 @@ function Workspace({
                 >
                   刷新
                 </Button>
-                {page === "pricing" && (
+                {page === "pricing" && demo && (
                   <Button
                     type="primary"
                     icon={<PlusOutlined aria-hidden="true" />}
@@ -795,7 +803,16 @@ function Workspace({
                 canExport={can(session, "data.export")}
               />
             )}
-            {page === "pricing" && (
+            {page === "pricing" && !demo && (
+              <LivePricing
+                company={company}
+                companies={permittedCompanies}
+                search={search}
+                canCreate={can(session, "price.create")}
+                canReview={can(session, "price.review")}
+              />
+            )}
+            {page === "pricing" && demo && (
               <PriceBatches
                 lines={lines.filter((l) =>
                   inScope(session, l.company, l.department),
@@ -1004,7 +1021,7 @@ function Workspace({
         month={month}
         company={company}
         demo={demo}
-        enabled={can(session, "question.use")}
+        enabled={area === "operation" && can(session, "question.use")}
       />
       <Drawer
         title="治理事项与材料"

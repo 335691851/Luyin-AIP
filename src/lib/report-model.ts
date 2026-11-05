@@ -1,6 +1,9 @@
 import Decimal from "decimal.js";
 export type Sale = {
   id: string;
+  number?: string;
+  costAmount?: number | null;
+  costBasis?: string;
   date: string;
   company: string;
   department: string;
@@ -13,7 +16,8 @@ export type Sale = {
   unitCost: number | null;
   status: string;
 };
-export type Dimension = "company" | "category" | "region" | "product" | "date";
+export type Dimension =
+  "company" | "category" | "region" | "product" | "date" | "order";
 export type ReportRow = {
   id: string;
   name: string;
@@ -30,7 +34,10 @@ export type ReportRow = {
 export function buildReport(sales: Sale[], dimension: Dimension): ReportRow[] {
   const groups = new Map<string, Sale[]>();
   sales.forEach((s) => {
-    const name = s[dimension];
+    const name =
+      dimension === "order"
+        ? `${s.company} / ${s.number || s.id}`
+        : s[dimension];
     groups.set(name, [...(groups.get(name) || []), s]);
   });
   const total = sales.reduce((n, s) => n.plus(s.revenue), new Decimal(0));
@@ -44,7 +51,8 @@ export function buildReport(sales: Sale[], dimension: Dimension): ReportRow[] {
       const cost =
         covered.length === rows.length
           ? covered.reduce(
-              (n, s) => n.plus(new Decimal(s.qty).mul(s.unitCost!)),
+              (n, s) =>
+                n.plus(s.costAmount ?? new Decimal(s.qty).mul(s.unitCost!)),
               new Decimal(0),
             )
           : null;

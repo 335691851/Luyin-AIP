@@ -19,6 +19,9 @@ test("live pages and data require an actual session", async ({
     "/api/knowledge-graph?view=ontology",
     "/api/governance?view=group",
     "/api/reports/daily?date=2026-10-26",
+    "/api/pricing",
+    "/api/contracts/risk?month=2026-10",
+    "/api/governance/files?id=1",
   ]) {
     expect((await request.get(path)).status()).toBe(401);
   }

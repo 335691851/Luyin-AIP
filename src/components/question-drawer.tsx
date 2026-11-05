@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+const Chart = dynamic(() => import("./report-chart"), { ssr: false });
 import { useEffect, useState } from "react";
 import { Alert, Button, Drawer, Input, Spin, Table, Tag } from "antd";
 import { CloseOutlined, ArrowUpOutlined } from "@ant-design/icons";
@@ -23,7 +25,8 @@ type Answer = {
   query: string;
   sample: number;
   metric: string;
-  rows: { product: string; value: number }[];
+  columns?: string[];
+  rows: Record<string, any>[];
 };
 export default function QuestionDrawer({
   area,
@@ -201,21 +204,69 @@ export default function QuestionDrawer({
                 </Tag>
                 <p>{answer.answer}</p>
                 <Table
-                  rowKey="product"
+                  rowKey="key"
                   size="small"
-                  pagination={false}
-                  dataSource={answer.rows}
-                  columns={[
-                    { title: "产品", dataIndex: "product" },
-                    {
-                      title: answer.metric === "qty" ? "数量" : "金额（元）",
-                      dataIndex: "value",
-                      align: "right",
-                      render: (v) =>
-                        v.toLocaleString("zh-CN", { maximumFractionDigits: 2 }),
-                    },
-                  ]}
+                  pagination={{ pageSize: 10 }}
+                  scroll={{ x: "max-content" }}
+                  dataSource={answer.rows.map((r, i) => ({ ...r, key: i }))}
+                  columns={
+                    answer.columns
+                      ? answer.columns.map((key) => ({
+                          title: key,
+                          dataIndex: key,
+                          render: (v: unknown) =>
+                            v === null
+                              ? "—"
+                              : typeof v === "object"
+                                ? JSON.stringify(v)
+                                : String(v),
+                        }))
+                      : [
+                          { title: "产品", dataIndex: "product" },
+                          {
+                            title:
+                              answer.metric === "qty" ? "数量" : "金额（元）",
+                            dataIndex: "value",
+                            align: "right",
+                            render: (v) =>
+                              v.toLocaleString("zh-CN", {
+                                maximumFractionDigits: 2,
+                              }),
+                          },
+                        ]
+                  }
                 />
+                {answer.columns &&
+                  answer.rows.length > 0 &&
+                  (() => {
+                    const keys = answer.columns!;
+                    const label = keys.find(
+                      (k) =>
+                        typeof answer.rows[0][k] === "string" &&
+                        !Number.isFinite(Number(answer.rows[0][k])),
+                    );
+                    const value = keys.find(
+                      (k) =>
+                        k !== label &&
+                        !/id|编号/i.test(k) &&
+                        answer.rows.every(
+                          (r) =>
+                            r[k] !== null &&
+                            r[k] !== "" &&
+                            Number.isFinite(Number(r[k])),
+                        ),
+                    );
+                    return label && value ? (
+                      <Chart
+                        kind="bar"
+                        data={answer.rows.slice(0, 10).map((r) => ({
+                          name: String(r[label]),
+                          value: Number(r[value]),
+                        }))}
+                        unit={value}
+                      />
+                    ) : null;
+                  })()}
                 <small>
                   依据：{answer.basis} · {answer.sample}行样本
                 </small>

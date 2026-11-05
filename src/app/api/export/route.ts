@@ -36,7 +36,7 @@ export async function GET(req: Request) {
         { error: "当前角色无此报表查看权限" },
         { status: 403 },
       );
-    const valid = ["company", "category", "region", "product", "date"];
+    const valid = ["company", "category", "product", "date", "order"];
     if (dimension && !valid.includes(dimension))
       return Response.json({ error: "不支持的报表模板" }, { status: 400 });
     const sheet = book.addWorksheet(dimension ? "固定报表" : "订单销售明细");
@@ -63,6 +63,7 @@ export async function GET(req: Request) {
         region: "区域",
         product: "产品",
         date: "业务日期",
+        order: "订单编号",
       };
       sheet.addRow(
         profit
@@ -112,7 +113,7 @@ export async function GET(req: Request) {
         );
       sheet.addRow([
         profit
-          ? "名义利润=收入−数量×有效单位成本；不分摊费用；缺成本不可计算，汇总未抵销内部交易。"
+          ? "名义利润=收入−ERP订单行成本（cost_cents/100）；不分摊费用；缺成本不可计算，汇总未抵销内部交易。"
           : "审核订单、自然月；数量仅在单位统一为吨时汇总。",
       ]);
     } else {

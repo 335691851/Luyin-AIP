@@ -32,12 +32,6 @@ const salesTemplates = [
     subtitle: "按产品类型汇总，观察销售结构",
   },
   {
-    id: "region",
-    label: "区域销售报表",
-    dimension: "region",
-    subtitle: "区域贡献与销售分布",
-  },
-  {
     id: "date",
     label: "每日销售日报",
     dimension: "date",
@@ -45,6 +39,12 @@ const salesTemplates = [
   },
 ] as const;
 const profitTemplates = [
+  {
+    id: "order",
+    label: "订单利润明细",
+    dimension: "order",
+    subtitle: "按订单汇总收入、ERP订单行成本、名义利润及利润率",
+  },
   {
     id: "product",
     label: "产品利润贡献",
@@ -56,12 +56,6 @@ const profitTemplates = [
     label: "法人利润对照",
     dimension: "company",
     subtitle: "各法人名义利润、利润率及成本覆盖对照",
-  },
-  {
-    id: "region",
-    label: "区域利润分析",
-    dimension: "region",
-    subtitle: "区域名义利润贡献与收入结构",
   },
 ] as const;
 export default function ReportCanvas({
@@ -118,6 +112,7 @@ export default function ReportCanvas({
     region: "销售区域",
     product: "产品名称",
     date: "业务日期",
+    order: "订单编号",
   };
   const columns: ColumnsType<ReportRow> = [
     {
@@ -223,7 +218,12 @@ export default function ReportCanvas({
   const drillRows =
     drill === null
       ? []
-      : sales.filter((s) => s[template.dimension as Dimension] === drill);
+      : sales.filter(
+          (s) =>
+            (template.dimension === "order"
+              ? `${s.company} / ${s.number || s.id}`
+              : s[template.dimension]) === drill,
+        );
   const drillColumns: ColumnsType<Sale> = [
     { title: "订单 / 行号", dataIndex: "id", width: 210 },
     { title: "业务日期", dataIndex: "date", width: 110 },
@@ -254,6 +254,27 @@ export default function ReportCanvas({
         ] || v,
     },
   ];
+  if (focus)
+    drillColumns.push(
+      {
+        title: "ERP订单行成本（元）",
+        width: 160,
+        render: (_, r) =>
+          fmt(
+            r.costAmount ?? (r.unitCost === null ? null : r.qty * r.unitCost),
+          ),
+      },
+      {
+        title: "订单行名义利润（元）",
+        width: 180,
+        render: (_, r) =>
+          fmt(
+            r.unitCost === null
+              ? null
+              : r.revenue - (r.costAmount ?? r.qty * r.unitCost),
+          ),
+      },
+    );
   columns.push({
     title: "追溯",
     key: "trace",
@@ -455,15 +476,6 @@ export default function ReportCanvas({
               title={`有效成本覆盖 ${total.coverage} 行，缺成本分组不计算利润及利润率`}
             />
           )}
-          {template.dimension === "region" &&
-            sales.some((s) => s.region === "未映射区域") && (
-              <Alert
-                className="report-quality-note"
-                type="info"
-                showIcon
-                title="区域映射未完成：未映射订单单独归组，不推定客户所属区域"
-              />
-            )}
           <div className="report-body">
             <div className="report-table-area">
               <div className="report-section-heading">
@@ -531,7 +543,7 @@ export default function ReportCanvas({
                 <b>报表说明</b>
                 <p>
                   {focus
-                    ? "名义利润＝订单收入－数量×有效单位成本；不分摊费用。缺成本分组不计算利润；法人汇总未抵销内部交易。"
+                    ? "名义利润＝订单不含税收入－ERP订单行成本（cost_cents÷100）；不分摊费用。可按订单追溯；法人汇总未抵销内部交易。"
                     : "销售统计按订单业务日期归属自然月；产品子分类不重复计入父级合计。"}{" "}
                   数量仅在来源单位已统一为吨时汇总。
                 </p>
@@ -545,19 +557,38 @@ export default function ReportCanvas({
             <aside className="report-visuals">
               <section>
                 <div className="report-section-heading">
-                  <h2>{focus ? "利润贡献分布" : "收入结构占比"}</h2>
+                  <h2>
+                    {focus
+                      ? chartData.some((d) => d.value < 0)
+                        ? "盈亏分布（含负利润）"
+                        : "利润贡献分布"
+                      : "收入结构占比"}
+                  </h2>
                   <BarChartOutlined aria-hidden />
                 </div>
-                {chartData.length &&
-                (!focus || allCovered) &&
-                chartData.every((d) => d.value >= 0) ? (
-                  <Chart kind="pie" data={chartData} />
+                {chartData.length && (!focus || allCovered) ? (
+                  <Chart
+                    kind={
+                      focus && chartData.some((d) => d.value < 0)
+                        ? "bar"
+                        : "pie"
+                    }
+                    data={
+                      focus && chartData.some((d) => d.value < 0)
+                        ? [...chartData]
+                            .sort(
+                              (a, b) => Math.abs(b.value) - Math.abs(a.value),
+                            )
+                            .slice(0, 15)
+                        : chartData
+                    }
+                  />
                 ) : (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
                       rows.length
-                        ? "完整可比数据不足或存在负利润，暂不展示占比"
+                        ? "成本数据尚不完整，暂不展示利润分布"
                         : "当前筛选条件下无订单数据"
                     }
                   />

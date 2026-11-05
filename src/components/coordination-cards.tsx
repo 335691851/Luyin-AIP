@@ -38,7 +38,7 @@ type Props = {
 const kinds = [
   { id: "tail", name: "成品尾库清理", desc: "超3个自然月 · 余量小于0.5吨" },
   { id: "clear", name: "库存销售计划", desc: "库存与近30日订单覆盖分析" },
-  { id: "prepare", name: "工厂备货缺口", desc: "待需求、在途与产能口径接入" },
+  { id: "prepare", name: "工厂备货计划", desc: "待需求、在途与产能口径接入" },
 ];
 export default function CoordinationCards(props: Props) {
   return props.demo ? <Demo {...props} /> : <Live {...props} />;
@@ -257,6 +257,21 @@ function Live({ canFeedback, company, search }: Props) {
           title="每类最多展示100条候选；数量是当前展示范围，请结合源库核查"
         />
       )}
+      {["tail", "prepare"].includes(type) && (
+        <details className="panel" style={{ padding: 16, margin: "12px 0" }}>
+          <summary>ERP需要补充哪些数据？</summary>
+          {type === "tail" ? (
+            <p>
+              按公司/成品/批次补齐stock_balance余额与占用量、lot批次号、stock_transaction完整正向入库历史；单位必须为吨。判定为检查日向前3个自然月之前入库，且批次合计0&lt;余额&lt;0.5吨。无匹配不等于数据完整。
+            </p>
+          ) : (
+            <p>
+              由ERP提供public.ai_restock_plan_input视图：工厂、成品、计划窗口、确认需求、可用库存、确定在途、已排产、安全库存、可用产能、统一快照日与来源编号。净缺口=max(需求+安全库存-可用-在途-已排产,0)；建议备货=min(净缺口,可用产能)。
+            </p>
+          )}
+          <p>详细字段及边界验收案例见仓库 docs/ERP数据补充与联调要求.md。</p>
+        </details>
+      )}
       <Spin spinning={loading}>
         <div className="candidate-grid">
           {candidates.slice((pageIndex - 1) * 6, pageIndex * 6).map((c) => (
@@ -303,7 +318,7 @@ function Live({ canFeedback, company, search }: Props) {
             <Empty
               description={
                 type === "prepare"
-                  ? "缺少已确认需求计划、在途与产能数据，暂不生成备货缺口"
+                  ? "缺少已确认需求计划、在途与产能数据，暂不生成备货计划"
                   : `当前筛选下没有待处理候选；已处理建议可在下方查阅`
               }
             />

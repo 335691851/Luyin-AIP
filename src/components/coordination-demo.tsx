@@ -157,7 +157,7 @@ export default function CoordinationCards({
     },
     {
       id: "prepare",
-      name: "工厂备货缺口",
+      name: "工厂备货计划",
       desc: "需求、可用与在途对照",
       icon: <DeploymentUnitOutlined aria-hidden />,
     },

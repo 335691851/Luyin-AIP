@@ -1,5 +1,7 @@
 # 鲁银智能化平台
 
+当前功能基线以 [V0.5业务迭代说明](docs/业务迭代V0.5说明.md) 为准；ERP尾货和备货填充要求见 [数据契约](docs/ERP数据补充与联调要求.md)。下文保留了分阶段实施记录，早期限制以V0.5说明覆盖。
+
 单仓库Next.js应用，提供智能经营与监管风控两个工作空间。技术底座为Node.js 24、Next.js/React、Ant Design/ECharts、LangChain/DeepSeek及Supabase；通过GitHub连接Vercel部署，ERP和平台数据使用Supabase Postgres直连。
 
 ## 本地启动
