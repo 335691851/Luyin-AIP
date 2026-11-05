@@ -8,7 +8,7 @@ test("fixed report canvas, contextual question drawer and matching report export
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/operation");
   await expect(
-    page.getByRole("heading", { name: "法人销售月报", exact: true }),
+    page.getByRole("heading", { name: "销售月报", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("本地演示空间", { exact: true })).toBeVisible();
   await expect(
@@ -151,7 +151,7 @@ test("governance remains intact and the floating question drawer works on mobile
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/operation/reports");
   await expect(
-    page.getByRole("heading", { name: "法人销售月报", exact: true }),
+    page.getByRole("heading", { name: "销售月报", exact: true }),
   ).toBeVisible();
   expect(
     await page

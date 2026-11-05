@@ -21,7 +21,7 @@ const fmt = (v: number | null) =>
 const salesTemplates = [
   {
     id: "company",
-    label: "法人销售月报",
+    label: "销售月报",
     dimension: "company",
     subtitle: "各法人销售规模与产品结构对照",
   },

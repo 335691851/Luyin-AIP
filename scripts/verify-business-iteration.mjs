@@ -223,7 +223,7 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(90000);
   await page.goto("/operation/reports");
-  await page.getByRole("tab", { name: "法人销售月报", exact: true }).waitFor();
+  await page.getByRole("tab", { name: "销售月报", exact: true }).waitFor();
   assert.equal(
     await page.getByText("区域销售报表", { exact: true }).count(),
     0,

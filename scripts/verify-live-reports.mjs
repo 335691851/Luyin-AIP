@@ -78,7 +78,7 @@ try {
   step = "open_reports_page";
   await page.goto("/operation/reports");
   await page
-    .getByRole("heading", { name: "法人销售月报", exact: true })
+    .getByRole("heading", { name: "销售月报", exact: true })
     .waitFor();
   const period = page.locator('input[type="month"]');
   if ((await period.inputValue()) !== "2026-10") {

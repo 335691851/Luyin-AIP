@@ -46,7 +46,7 @@ try {
     assert.equal((await login).status(), 200);
     await page.waitForURL("**/operation", { timeout: 90000 });
     await page
-      .getByRole("heading", { name: "法人销售月报", exact: true })
+      .getByRole("heading", { name: "销售月报", exact: true })
       .waitFor();
   });
   await check("single_superuser_database_scope", async () => {
