@@ -1,0 +1,15 @@
+.git/
+.env*
+!.env.example
+!.env.production.example
+.local/
+.next/
+node_modules/
+evidence/
+test-results/
+playwright-report/
+tests/
+docs/
+supabase/
+*.log
+*.tsbuildinfo
