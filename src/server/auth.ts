@@ -135,7 +135,7 @@ export function safeError(error: unknown) {
       422,
       "ERP部门授权字段尚未映射，不能查询部门数据",
     ],
-    INVALID_REPORT_PERIOD: [400, "请选择有效的自然月期间"],
+    INVALID_REPORT_PERIOD: [400, "请选择有效的自然月或自然年期间"],
     REPORT_SCOPE_TOO_LARGE: [
       422,
       "该期间订单行超过在线明细上限，请缩小法人范围；未返回截断数据",

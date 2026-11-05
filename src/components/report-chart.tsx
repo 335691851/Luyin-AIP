@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { BarChart, PieChart } from "echarts/charts";
+import { BarChart, PieChart, LineChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -11,6 +11,7 @@ import { SVGRenderer } from "echarts/renderers";
 echarts.use([
   BarChart,
   PieChart,
+  LineChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -21,8 +22,8 @@ export default function ReportChart({
   data,
   unit = "元",
 }: {
-  kind: "pie" | "bar" | "column";
-  data: { name: string; value: number }[];
+  kind: "pie" | "bar" | "column" | "line";
+  data: { name: string; value: number | null }[];
   unit?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +47,9 @@ export default function ReportChart({
       tooltip: {
         trigger: kind === "pie" ? "item" : "axis",
         valueFormatter: (v: unknown) =>
-          `${Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 })} ${unit}`,
+          v == null
+            ? "—"
+            : `${Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 })} ${unit}`,
       },
     };
     chart.setOption(
@@ -81,7 +84,7 @@ export default function ReportChart({
               containLabel: true,
             },
             xAxis:
-              kind === "column"
+              kind !== "bar"
                 ? {
                     type: "category",
                     data: data.map((d) =>
@@ -104,7 +107,7 @@ export default function ReportChart({
                     splitLine: { lineStyle: { color: "#eef0f3" } },
                   },
             yAxis:
-              kind === "column"
+              kind !== "bar"
                 ? {
                     type: "value",
                     splitNumber: 3,
@@ -125,12 +128,14 @@ export default function ReportChart({
                   },
             series: [
               {
-                type: "bar",
+                type: kind === "line" ? "line" : "bar",
+                connectNulls: false,
+                symbolSize: 6,
                 barMaxWidth: 17,
                 data: data.map((d, i) => ({
                   value: d.value,
                   itemStyle: {
-                    color: color[i % color.length],
+                    color: kind === "line" ? color[0] : color[i % color.length],
                     borderRadius:
                       kind === "column" ? [3, 3, 0, 0] : [0, 3, 3, 0],
                   },
@@ -151,7 +156,7 @@ export default function ReportChart({
       ref={ref}
       className="report-chart"
       role="img"
-      aria-label={`${kind === "pie" ? "占比饼图" : "排名柱状图"}：${data.map((d) => `${d.name} ${d.value.toFixed(2)}${unit}`).join("，")}`}
+      aria-label={`${kind === "pie" ? "占比饼图" : kind === "line" ? "月度趋势折线图" : "排名柱状图"}：${data.map((d) => `${d.name} ${d.value == null ? "无完整数据" : `${d.value.toFixed(2)}${unit}`}`).join("，")}`}
     />
   );
 }

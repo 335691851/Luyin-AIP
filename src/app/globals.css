@@ -1096,6 +1096,76 @@ h1 {
   margin-bottom: 16px;
   gap: 20px;
 }
+.annual-report {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+.period-select {
+  min-width: 130px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #dce0e5;
+  border-radius: 6px;
+  color: #29394c;
+  background: #fff;
+  font: inherit;
+}
+.period-select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.annual-report-heading {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 2px solid var(--brand);
+}
+.annual-report-heading h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+.annual-report-heading span,
+.annual-report-note {
+  color: #8b919c;
+  font-size: 11px;
+}
+.annual-report-table {
+  padding: 14px 20px;
+}
+.annual-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+.annual-charts > section {
+  padding: 16px 20px;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+}
+.annual-charts h3 {
+  font-size: 13px;
+  margin: 0;
+}
+.annual-product-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.annual-report-note {
+  padding: 8px 20px 14px;
+  margin: 0;
+  line-height: 1.7;
+}
+@media (max-width: 760px) {
+  .annual-charts {
+    grid-template-columns: 1fr;
+  }
+}
 .profit-insight {
   padding: 12px 16px;
   margin-bottom: 14px;

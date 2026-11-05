@@ -18,6 +18,10 @@ export async function POST(req: Request) {
       .object({
         question: z.string().trim().min(1).max(1000),
         month: z.string().regex(/^\d{4}-\d{2}$/),
+        year: z
+          .string()
+          .regex(/^[1-9]\d{3}$/)
+          .optional(),
         company: z.string().max(200).optional(),
       })
       .safeParse(await req.json());
@@ -29,13 +33,17 @@ export async function POST(req: Request) {
     if (!demoMode())
       return Response.json(
         await answerQuestion(
-          input.data.question,
+          input.data.year
+            ? `当前页面统计${input.data.year}自然年全年；未指定其他期间时使用此年。用户问题：${input.data.question}`
+            : input.data.question,
           input.data.month,
           input.data.company,
         ),
       );
     const data = await getSales({
-      month: input.data.month,
+      ...(input.data.year
+        ? { year: input.data.year }
+        : { month: input.data.month }),
       company: input.data.company,
     });
     let metric: "qty" | "revenue" | "profit" = "revenue";
@@ -48,7 +56,9 @@ export async function POST(req: Request) {
       return Response.json({ error: "当前角色无该指标权限" }, { status: 403 });
     const filtered = data.rows.filter(
       (r) =>
-        String(r.date).startsWith(input.data.month) &&
+        String(r.date).startsWith(
+          input.data.year ? `${input.data.year}-` : input.data.month,
+        ) &&
         (!input.data.company || r.company === input.data.company),
     );
     if (
@@ -90,7 +100,7 @@ export async function POST(req: Request) {
       basis:
         metric === "profit"
           ? "收入－数量×有效单位成本；不分摊费用"
-          : "审核销售订单；自然月；按产品汇总",
+          : `审核销售订单；${input.data.year ? `${input.data.year}自然年` : `${input.data.month}自然月`}；按产品汇总`,
       query:
         "预定义查询计划：按产品分组 → 指标求和 → 降序 → 前5；首版不开放自由SQL执行",
       sample: filtered.length,

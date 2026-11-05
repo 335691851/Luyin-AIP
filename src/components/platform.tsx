@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 const GovernanceWorkbench = dynamic(() => import("./governance-workbench"));
 const KnowledgeGraph = dynamic(() => import("./knowledge-graph"));
 const ReportCanvas = dynamic(() => import("./report-canvas"));
+const AnnualReport = dynamic(() => import("./annual-report"));
 const LivePricing = dynamic(() => import("./live-pricing"));
 const PriceBatches = dynamic(() => import("./price-batches"));
 import QuestionDrawer from "./question-drawer";
@@ -226,6 +227,8 @@ function Workspace({
     [company, setCompany] = useState(""),
     [search, setSearch] = useState(""),
     [mobile, setMobile] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState("month");
+  const [reportYear, setReportYear] = useState(shanghaiToday().slice(0, 4));
   const [lines, setLines] = useState<PriceLine[]>([]),
     [records, setRecords] = useState<GovernanceCase[]>([]),
     [selectedCase, setSelectedCase] = useState<GovernanceCase | null>(null),
@@ -323,7 +326,11 @@ function Workspace({
     setLoading(true);
     setError("");
     setSales([]);
-    const query = new URLSearchParams({ month });
+    const annual =
+      ["reports", "profit"].includes(page) && reportPeriod === "year";
+    const query = new URLSearchParams(
+      annual ? { year: reportYear } : { month },
+    );
     if (company) query.set("company", company);
     loadReport(
       query.toString(),
@@ -342,6 +349,7 @@ function Workspace({
           );
           if (
             !periodChosen.current &&
+            !annual &&
             !data.rows.length &&
             data.latestMonth &&
             data.latestMonth !== month
@@ -358,7 +366,18 @@ function Workspace({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [status, month, company, accessData, session, area, page, loadReport]);
+  }, [
+    status,
+    month,
+    company,
+    accessData,
+    session,
+    area,
+    page,
+    loadReport,
+    reportPeriod,
+    reportYear,
+  ]);
   const persist = (
     newLines: PriceLine[],
     newRecords: GovernanceCase[],
@@ -384,12 +403,16 @@ function Workspace({
         (r) =>
           !!session &&
           inScope(session, r.company, r.department) &&
-          r.date.startsWith(month) &&
+          r.date.startsWith(
+            ["reports", "profit"].includes(page) && reportPeriod === "year"
+              ? `${reportYear}-`
+              : month,
+          ) &&
           (!company || r.company === company) &&
           (!search ||
             [r.id, r.product, r.company, r.region].join(" ").includes(search)),
       ),
-    [sales, month, company, search, session],
+    [sales, month, company, search, session, page, reportPeriod, reportYear],
   );
   const module = moduleMap[page];
   const visibleCases = records.filter(
@@ -721,6 +744,22 @@ function Workspace({
             )}
             {!["settings", "semantic", "assistant", "graph"].includes(page) && (
               <div className="filters">
+                {area === "operation" &&
+                  ["reports", "profit"].includes(page) && (
+                    <label>
+                      报表范围
+                      <select
+                        aria-label="报表范围"
+                        className="period-select"
+                        disabled={!status}
+                        value={reportPeriod}
+                        onChange={(e) => setReportPeriod(e.target.value)}
+                      >
+                        <option value="year">年度概览</option>
+                        <option value="month">月度报表</option>
+                      </select>
+                    </label>
+                  )}
                 <label>
                   法人范围
                   <Select
@@ -758,16 +797,41 @@ function Workspace({
                 {area === "operation" &&
                   ["overview", "reports", "profit", "ask"].includes(page) && (
                     <label>
-                      业务期间
-                      <input
-                        aria-label="业务期间"
-                        type="month"
-                        value={month}
-                        onChange={(e) => {
-                          periodChosen.current = true;
-                          setMonth(e.target.value);
-                        }}
-                      />
+                      {reportPeriod === "year" &&
+                      ["reports", "profit"].includes(page)
+                        ? "统计年度"
+                        : "业务期间"}
+                      {reportPeriod === "year" &&
+                      ["reports", "profit"].includes(page) ? (
+                        <select
+                          aria-label="统计年度"
+                          className="period-select"
+                          disabled={!status}
+                          value={reportYear}
+                          onChange={(e) => setReportYear(e.target.value)}
+                        >
+                          {Array.from({ length: 10 }, (_, i) => {
+                            const year = String(
+                              Number(shanghaiToday().slice(0, 4)) - i,
+                            );
+                            return (
+                              <option key={year} value={year}>
+                                {year}年
+                              </option>
+                            );
+                          })}
+                        </select>
+                      ) : (
+                        <input
+                          aria-label="业务期间"
+                          type="month"
+                          value={month}
+                          onChange={(e) => {
+                            periodChosen.current = true;
+                            setMonth(e.target.value);
+                          }}
+                        />
+                      )}
                     </label>
                   )}
                 <span className="filter-spacer" />
@@ -781,28 +845,41 @@ function Workspace({
                 />
               </div>
             )}
-            {(page === "reports" || page === "profit") && (
-              <ReportCanvas
-                key={page}
-                errorMessage={error}
-                latestMonth={latestMonth}
-                onLatest={() => {
-                  periodChosen.current = true;
-                  if (latestMonth) setMonth(latestMonth);
-                }}
-                variant={page === "profit" ? "profit" : "sales"}
-                sales={filtered}
-                month={month}
-                company={
-                  company ||
-                  (session.user.scope !== "group" ? session.user.company : "")
-                }
-                search={search}
-                demo={demo}
-                loading={loading}
-                canExport={can(session, "data.export")}
-              />
-            )}
+            {(page === "reports" || page === "profit") &&
+              (reportPeriod === "year" ? (
+                <AnnualReport
+                  sales={filtered}
+                  year={reportYear}
+                  company={company}
+                  search={search}
+                  profit={can(session, "profit.view")}
+                  loading={loading}
+                  error={error}
+                  demo={demo}
+                  canExport={can(session, "data.export")}
+                />
+              ) : (
+                <ReportCanvas
+                  key={page}
+                  errorMessage={error}
+                  latestMonth={latestMonth}
+                  onLatest={() => {
+                    periodChosen.current = true;
+                    if (latestMonth) setMonth(latestMonth);
+                  }}
+                  variant={page === "profit" ? "profit" : "sales"}
+                  sales={filtered}
+                  month={month}
+                  company={
+                    company ||
+                    (session.user.scope !== "group" ? session.user.company : "")
+                  }
+                  search={search}
+                  demo={demo}
+                  loading={loading}
+                  canExport={can(session, "data.export")}
+                />
+              ))}
             {page === "pricing" && !demo && (
               <LivePricing
                 company={company}
@@ -1019,6 +1096,11 @@ function Workspace({
         area={area}
         pageTitle={title}
         month={month}
+        year={
+          ["reports", "profit"].includes(page) && reportPeriod === "year"
+            ? reportYear
+            : undefined
+        }
         company={company}
         demo={demo}
         enabled={area === "operation" && can(session, "question.use")}

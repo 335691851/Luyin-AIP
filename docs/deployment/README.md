@@ -34,14 +34,14 @@
 |Install Command|npm ci|
 |Build Command|npm run env:check -- --production && npm run build，已写入vercel.json|
 |Output Directory|保持Next.js默认自动识别，不填dist或静态out|
-|运行方式|Node.js Vercel Functions；API使用nodejs；多数请求60秒，通用问数120秒（含计划修正与结果解释）|
+|运行方式|Node.js Vercel Functions；API使用nodejs；多数请求60秒，通用问数与报表读取120秒（含计划修正与结果解释）|
 |区域|当前配置cle1，对应现有Supabase us-east-2；更换数据库区域时同步调整|
 |Production Branch|选择实际发布分支；当前生产分支为main|
 |应用变量|按[变量清单](environment-variables.md)分别设置Production/Preview|
 
 Vercel使用框架构建产物，不运行npm run dev，也不通过npm start维持3100端口。仓库的本地生产预览脚本与云端函数运行方式不同。cle1与us-east-2的对应关系及就近数据库部署建议见[Vercel区域表](https://vercel.com/docs/regions)。
 
-当前请求为同步短任务。模型已有超时，Route Handler多数设置60秒，通用问数120秒上限；这不是未来大批量分析的后台任务机制。当前XLSX导入限制2 MiB，在线导出限制4 MiB，避免超出[Vercel Functions请求/响应限制](https://vercel.com/docs/functions/limitations)。大文件应改为私有Storage直传/归档链接后才能开放。
+当前请求为同步短任务。模型已有超时，Route Handler多数设置60秒，通用问数与报表读取120秒上限；这不是未来大批量分析的后台任务机制。当前XLSX导入限制2 MiB，在线导出限制4 MiB，避免超出[Vercel Functions请求/响应限制](https://vercel.com/docs/functions/limitations)。大文件应改为私有Storage直传/归档链接后才能开放。
 
 ## 3 Supabase要求
 

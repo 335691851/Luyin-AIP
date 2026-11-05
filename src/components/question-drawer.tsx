@@ -32,6 +32,7 @@ export default function QuestionDrawer({
   area,
   pageTitle,
   month,
+  year,
   company,
   demo,
   enabled = true,
@@ -39,6 +40,7 @@ export default function QuestionDrawer({
   area: string;
   pageTitle: string;
   month: string;
+  year?: string;
   company: string;
   demo: boolean;
   enabled?: boolean;
@@ -91,7 +93,7 @@ export default function QuestionDrawer({
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, month, company }),
+        body: JSON.stringify({ question: q, month, year, company }),
       });
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
@@ -123,7 +125,7 @@ export default function QuestionDrawer({
             <b>让数据回答你的问题</b>
             <p>
               {area === "operation"
-                ? "沿用当前月份和法人，直接查询订单销售额、销量等指标。"
+                ? "沿用当前统计期间和公司范围，直接查询订单销售额、销量等指标。"
                 : "保留当前页面上下文，可用数据范围以助手说明为准。"}
             </p>
             <button className="insight-hint-open" onClick={launch}>
@@ -163,7 +165,7 @@ export default function QuestionDrawer({
           <span>当前页面上下文</span>
           <b>{pageTitle}</b>
           <small>
-            {month} · {company || "全部授权法人"}
+            {year ? `${year}全年` : month} · {company || "全部授权法人"}
           </small>
         </div>
         <div className="question-thread">
@@ -179,9 +181,9 @@ export default function QuestionDrawer({
           {area === "operation" && (
             <div className="question-prompts">
               {[
-                "本月销售额最高的5个产品",
-                "本月订单销量前5名",
-                "本月名义利润最高的5个产品",
+                `${year ? "本年" : "本月"}销售额最高的5个产品`,
+                `${year ? "本年" : "本月"}订单销量前5名`,
+                `${year ? "本年" : "本月"}名义利润最高的5个产品`,
               ].map((q) => (
                 <button key={q} onClick={() => send(q)}>
                   {q} ↗
