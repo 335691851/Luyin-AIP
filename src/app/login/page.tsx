@@ -34,6 +34,7 @@ export default function Login() {
           {error && <Alert type="error" title={error} />}
           <Form
             layout="vertical"
+            initialValues={{ email: "admin@luyin.com", password: "admin" }}
             onFinish={async (values) => {
               setBusy(true);
               setError("");
