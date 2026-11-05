@@ -7,6 +7,11 @@ import { getSales } from "@/server/reports";
 import { demoMode } from "@/server/config";
 import { safeError } from "@/server/auth";
 import { nominalProfit } from "@/lib/domain";
+import {
+  insightOwner,
+  conversationHistory,
+  saveInsight,
+} from "@/server/insight-history";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
@@ -23,6 +28,8 @@ export async function POST(req: Request) {
           .regex(/^[1-9]\d{3}$/)
           .optional(),
         company: z.string().max(200).optional(),
+        conversationId: z.uuid().optional(),
+        pageTitle: z.string().max(100).optional(),
       })
       .safeParse(await req.json());
     if (!input.success)
@@ -30,16 +37,37 @@ export async function POST(req: Request) {
     const user = await identity();
     if (!can(user.access, "question.use"))
       return Response.json({ error: "当前角色无此操作权限" }, { status: 403 });
-    if (!demoMode())
-      return Response.json(
-        await answerQuestion(
-          input.data.year
-            ? `当前页面统计${input.data.year}自然年全年；未指定其他期间时使用此年。用户问题：${input.data.question}`
-            : input.data.question,
-          input.data.month,
-          input.data.company,
-        ),
+    if (!demoMode()) {
+      const owner = await insightOwner(user);
+      const history = await conversationHistory(
+        input.data.conversationId,
+        owner,
       );
+      const answer = await answerQuestion(
+        input.data.year
+          ? `当前页面统计${input.data.year}自然年全年；未指定其他期间时使用此年。用户问题：${input.data.question}`
+          : input.data.question,
+        input.data.month,
+        input.data.company,
+        history,
+      );
+      const saved = await saveInsight(
+        input.data.question,
+        answer,
+        {
+          month: input.data.month,
+          year: input.data.year,
+          company: input.data.company,
+          pageTitle: input.data.pageTitle,
+        },
+        input.data.conversationId,
+        owner,
+      );
+      return Response.json(
+        { ...answer, ...saved },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
     const data = await getSales({
       ...(input.data.year
         ? { year: input.data.year }

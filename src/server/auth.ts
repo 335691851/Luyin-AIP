@@ -121,6 +121,8 @@ export const identity = cache(async function identity() {
 export function safeError(error: unknown) {
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
   const known: Record<string, [number, string]> = {
+    INSIGHT_NOT_FOUND: [404, "会话不存在或当前权限已变化，请新建会话"],
+    INSIGHT_RESULT_TOO_LARGE: [422, "查询结果过大，请缩小字段或数据范围后重试"],
     ONTORAG_NOT_CONFIGURED: [503, "OntoRAG服务地址或密钥尚未配置"],
     ONTORAG_UNAVAILABLE: [502, "OntoRAG读取失败，请检查后台连接状态后重试"],
     GRAPH_INVALID_INPUT: [400, "图谱范围或实体标识无效"],

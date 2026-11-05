@@ -22,6 +22,7 @@ test("live pages and data require an actual session", async ({
     "/api/pricing",
     "/api/contracts/risk?month=2026-10",
     "/api/governance/files?id=1",
+    "/api/chat/history",
   ]) {
     expect((await request.get(path)).status()).toBe(401);
   }

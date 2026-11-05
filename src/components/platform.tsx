@@ -1099,6 +1099,14 @@ function Workspace({
         </main>
       </div>
       <QuestionDrawer
+        key={JSON.stringify([
+          session.user.id,
+          session.role.id,
+          session.user.scope,
+          session.user.department,
+          session.companies,
+          session.permissions,
+        ])}
         area={area}
         pageTitle={title}
         month={month}
