@@ -1,5 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import PricingAssessment from "./pricing-assessment";
+import {
+  pricingStatusColors,
+  pricingStatusTone,
+} from "@/lib/pricing-presentation";
 import {
   Alert,
   App,
@@ -440,7 +445,7 @@ export default function LivePricing({
               {batch.company} · {batch.id}
             </h2>
             <p>{batch.lines.length}个调价行 · 含税元/吨</p>
-            <section className="ai-assessment">
+            <section className="ai-assessment pricing-batch-assessment">
               <div className="panel-title">
                 <h3>✦ AI 整批证据分析</h3>
                 <Button
@@ -462,11 +467,15 @@ export default function LivePricing({
                   生成智能评估
                 </Button>
               </div>
-              <p style={{ whiteSpace: "pre-wrap" }}>
-                {ai ||
-                  batch.ai_text ||
-                  "点击生成评估，智能体将读取申请方近30日销售、申请方和授权工厂库存、同产品历史调价。证据缺失会逐项说明。"}
-              </p>
+              {ai || batch.ai_text ? (
+                <PricingAssessment text={ai || batch.ai_text!} />
+              ) : (
+                <p className="pricing-assessment-placeholder">
+                  {
+                    "点击生成评估，智能体将读取申请方近30日销售、申请方和授权工厂库存、同产品历史调价。证据缺失会逐项说明。"
+                  }
+                </p>
+              )}
               {evidence && (
                 <details>
                   <summary>本次数据证据快照</summary>
@@ -498,7 +507,7 @@ export default function LivePricing({
                 {
                   title: "状态",
                   dataIndex: "status",
-                  render: (v) => <Tag>{v}</Tag>,
+                  render: (v) => <Tag color={pricingStatusColors[v]}>{v}</Tag>,
                 },
                 {
                   title: "审核意见 / 批准价",
@@ -506,6 +515,14 @@ export default function LivePricing({
                   render: (_, l) =>
                     ["待审核", "待补正"].includes(l.status) && canReview ? (
                       <>
+                        {l.opinion && (
+                          <div
+                            className={`pricing-review-result review-${pricingStatusTone(l.status)}`}
+                          >
+                            <b>上次审核意见</b>
+                            <p>{l.opinion}</p>
+                          </div>
+                        )}
                         <Input.TextArea
                           aria-label={`第${l.id}行审核意见`}
                           value={drafts[l.id]?.note || ""}
@@ -547,10 +564,22 @@ export default function LivePricing({
                         </Space>
                       </>
                     ) : (
-                      <>
-                        {l.opinion}
-                        <p>{l.approved ? `批准价 ${l.approved}` : ""}</p>
-                      </>
+                      <div
+                        className={`pricing-review-result review-${pricingStatusTone(l.status)}`}
+                      >
+                        <b>{l.status} · 审核意见</b>
+                        <p>{l.opinion || "暂无审核意见"}</p>
+                        {l.approved != null && (
+                          <strong className="pricing-approved-value">
+                            批准价{" "}
+                            {l.approved.toLocaleString("zh-CN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            元/吨
+                          </strong>
+                        )}
+                      </div>
                     ),
                 },
               ]}
