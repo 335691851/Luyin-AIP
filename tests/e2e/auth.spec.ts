@@ -31,6 +31,11 @@ test("live pages and data require an actual session", async ({
   await expect(page.getByLabel("企业邮箱", { exact: true })).toBeVisible();
   await page.goto("/admin/users");
   await expect(page).toHaveURL(/\/login$/);
+  const governanceChat = await request.post("/api/governance/chat", {
+    headers: { origin },
+    data: { company: "鲁盐泰安", question: "授权到期怎么办？" },
+  });
+  expect(governanceChat.status()).toBe(401);
 });
 
 test("local preview cookies cannot grant live access and auth rejects forged origins", async ({
