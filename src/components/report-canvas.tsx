@@ -53,7 +53,7 @@ const profitTemplates = [
   },
   {
     id: "company",
-    label: "法人利润对照",
+    label: "公司利润对照",
     dimension: "company",
     subtitle: "各法人名义利润、利润率及成本覆盖对照",
   },
@@ -593,7 +593,7 @@ export default function ReportCanvas({
                 <div className="report-section-heading">
                   <h2>
                     {marginComparison
-                      ? "法人利润率对照"
+                      ? "公司利润率对照"
                       : focus
                         ? "名义利润排名"
                         : "销售收入排名"}

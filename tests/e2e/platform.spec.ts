@@ -59,9 +59,9 @@ test("fixed report canvas, contextual question drawer and matching report export
   await expect(
     page.getByRole("heading", { name: "产品利润贡献", exact: true }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "法人利润对照", exact: true }).click();
+  await page.getByRole("tab", { name: "公司利润对照", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "法人利润对照", exact: true }),
+    page.getByRole("heading", { name: "公司利润对照", exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
