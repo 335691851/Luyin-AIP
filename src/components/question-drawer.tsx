@@ -5,6 +5,8 @@ import { CloseOutlined, ArrowUpOutlined } from "@ant-design/icons";
 import QuestionResult from "./question-result";
 import { useInsightHistory } from "./use-insight-history";
 import { shouldSendOnEnter, type InsightTurn } from "@/lib/insight";
+import { insightPrompts } from "@/lib/insight-prompts";
+import { useWorkspace } from "./workspace-session";
 function InsightMark() {
   return (
     <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
@@ -42,6 +44,18 @@ export default function QuestionDrawer({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const history = useInsightHistory(open, demo, enabled);
+  const workspace = useWorkspace();
+  const prompts = insightPrompts(
+    month,
+    year,
+    workspace?.data?.session?.permissions || [],
+  );
+  const inputRef = useRef<React.ComponentRef<typeof Input.TextArea>>(null);
+  const chooseQuestion = (value: string) => {
+    setQuestion(value);
+    setError("");
+    inputRef.current?.focus({ cursor: "end" });
+  };
   const busyRef = useRef(false),
     mounted = useRef(true),
     request = useRef<AbortController | null>(null);
@@ -290,18 +304,16 @@ export default function QuestionDrawer({
                 <p>保留您的期间、法人筛选，不离开当前工作页面。</p>
               </div>
               {area === "operation" && (
-                <div className="question-prompts">
-                  {[
-                    `${year ? "本年" : "本月"}销售额最高的5个产品`,
-                    `${year ? "本年" : "本月"}订单销量前5名`,
-                    `${year ? "本年" : "本月"}名义利润最高的5个产品`,
-                  ].map((q) => (
+                <div className="question-prompts insight-common-prompts">
+                  {prompts.map((q) => (
                     <button
-                      key={q}
+                      key={q.id}
                       disabled={busy || history.loading}
-                      onClick={() => send(q)}
+                      onClick={() => chooseQuestion(q.question)}
                     >
-                      {q} ↗
+                      <small>{q.group}</small>
+                      {q.label}
+                      <span aria-hidden> ↙</span>
                     </button>
                   ))}
                 </div>
@@ -351,7 +363,33 @@ export default function QuestionDrawer({
           {error && <Alert type="warning" showIcon title={error} />}
         </div>
         <div className="question-compose">
+          <label className="insight-question-picker">
+            常见问题
+            <select
+              aria-label="选择常见问题填入输入框"
+              value=""
+              disabled={busy || history.loading}
+              onChange={(e) => {
+                const prompt = prompts.find((p) => p.id === e.target.value);
+                if (prompt) chooseQuestion(prompt.question);
+              }}
+            >
+              <option value="">选择问题，仅填入，不发送</option>
+              {[...new Set(prompts.map((p) => p.group))].map((group) => (
+                <optgroup key={group} label={group}>
+                  {prompts
+                    .filter((p) => p.group === group)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           <Input.TextArea
+            ref={inputRef}
             aria-label="业务问题"
             value={question}
             disabled={busy}

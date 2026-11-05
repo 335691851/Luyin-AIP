@@ -4294,3 +4294,42 @@ h1 {
     font-size: 10px;
   }
 }
+.insight-common-prompts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+.insight-common-prompts button {
+  min-width: 0;
+  padding: 10px 12px;
+  color: #354153;
+}
+.insight-common-prompts button small {
+  display: block;
+  color: #9b6a72;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.insight-question-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #68768a;
+  margin-bottom: 10px;
+}
+.insight-question-picker select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: #46546b;
+  background: #fff;
+}
+@media (max-width: 480px) {
+  .insight-common-prompts {
+    grid-template-columns: 1fr;
+  }
+}
