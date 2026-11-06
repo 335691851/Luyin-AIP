@@ -7,7 +7,7 @@ export async function governanceKnowledge(
 ) {
   const docs = [...new Set(documentIds)]
     .filter((id) => /^[a-f0-9-]{36}$/.test(id))
-    .slice(0, 3);
+    .slice(0, 10);
   const terms = question.replace(/[\s，。？、：]/g, "").match(/.{2}/g) || [];
   const graphs = await Promise.all(
     docs.map((id) => getKnowledgeGraph("instances", id)),
@@ -23,7 +23,7 @@ export async function governanceKnowledge(
       })),
     )
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+    .slice(0, 10);
   const details = await Promise.all(
     candidates.map((c) => getKnowledgeDetail(c.doc, c.node.id)),
   );
