@@ -15,6 +15,13 @@ export type InsightAnswer = {
   rows: Record<string, unknown>[];
   truncated?: boolean;
   mode?: string;
+  workflow?: {
+    engine: "langgraph";
+    graph: "data-insight";
+    steps: string[];
+    planRepairs: number;
+    sqlRepairs: number;
+  };
 };
 export type InsightTurn = {
   id: string;

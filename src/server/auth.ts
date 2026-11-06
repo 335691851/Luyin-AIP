@@ -147,6 +147,7 @@ export function safeError(error: unknown) {
     AUTH_NOT_CONFIGURED: [503, "Supabase身份服务尚未配置"],
     ERP_DATABASE_NOT_CONFIGURED: [503, "ERP只读数据库尚未配置"],
     APP_DATABASE_NOT_CONFIGURED: [503, "平台业务数据库尚未配置"],
+    PRICE_ASSESSMENT_EMPTY: [502, "模型未返回有效调价评估，请稍后重试"],
   };
   const [status, message] = known[code] ?? [
     500,

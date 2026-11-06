@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         input.data.month,
         input.data.company,
         history,
+        req.signal,
       );
       const saved = await saveInsight(
         input.data.question,

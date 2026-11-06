@@ -35,7 +35,7 @@ flowchart TB
     OP[智能经营：业务数据、名义利润、调价、产销协同]
     GROUP[集团监管：重要问题处置、事项审核、合同风险]
     COMPANY[公司自治理：档案、授权、重大事项、会议、自查、整改]
-    AI[LangChain智能体与模型适配]
+    AI[LangChain模型适配 / LangGraph场景编排]
     KG[OntoRAG：制度知识、本体、图谱与原文证据]
     BASE --> OP
     BASE --> GROUP
@@ -66,7 +66,7 @@ flowchart LR
   AUTH[Supabase Auth]
   PLATFORM[平台Postgres：platform业务与授权表]
   ERPDB[项目外ERP：public业务表，只读访问]
-  AGENT[LangChain / SQL安全校验 / 证据组织]
+  AGENT[LangChain / LangGraph / SQL安全校验 / 证据组织]
   MODEL[DeepSeek云端API]
   ONTO[项目内独立服务：OntoRAG知识底座]
   LOCAL[规划：本地模型推理服务]
@@ -88,7 +88,7 @@ flowchart LR
 | 身份认证 | Supabase Auth；服务端验证身份并读取平台成员授权 |
 | 数据访问 | postgres客户端直连Postgres，使用连接池、独立运行角色和事务 |
 | 业务计算 | SQL、TypeScript与decimal.js；金额源字段按分转元，汇总避免浮点误差 |
-| 智能体 | LangChain及@langchain/openai，以兼容Chat Completions协议接入DeepSeek |
+| 智能体 | LangChain及@langchain/openai连接DeepSeek；数据洞察、调价评估采用LangGraph SDK在现有业务函数内编排 |
 | 知识底座 | 项目内OntoRAG独立服务；本体、实体关系、制度目录、属性与原文证据读取 |
 | 安全校验 | Zod输入校验、SQL AST与函数白名单、企业作用域、操作权限和版本校验 |
 | 文件与导出 | ExcelJS生成XLSX；治理附件当前存平台私有表，由鉴权接口下载 |
@@ -141,16 +141,16 @@ flowchart LR
 
 本章以本仓库源码为依据说明运行架构，并单列后续方案。业务中使用“智能体”作为产品名称，不表示每项能力都已经实现自主规划、工具循环或长期记忆。
 
-### 4.1 采用什么模式：LangChain，而非LangGraph
+### 4.1 采用什么模式：LangChain模型适配＋局部LangGraph工作流
 
-**当前采用LangChain JS的模型调用能力＋TypeScript显式业务编排。按场景拆分调用链，共享模型接入、安全校验和数据访问基础设施；不是一个常驻超级智能体承载多个线程。**
+**当前采用LangChain JS连接模型，数据洞察和调价评估使用LangGraph状态图；其余场景保留TypeScript业务编排。各场景共享模型接入、安全校验和数据访问基础设施，图状态按请求隔离。**
 
 | 问题 | 当前结论 |
 |---|---|
-| LangChain还是LangGraph？ | 使用`langchain`、`@langchain/core`与`@langchain/openai`依赖，主要调用`ChatOpenAI.invoke()`或`.stream()`；未引入LangGraph状态图、checkpointer或`thread_id`机制 |
+| LangChain还是LangGraph？ | 两者配合：`@langchain/langgraph`编排数据洞察和调价评估；`@langchain/openai`调用模型。没有接入Agent Server、持久checkpointer或LangGraph `thread_id` |
 | 是多智能体协作吗？ | 有问数、调价、产销解读、治理动作生成、治理材料核查、治理问答六条场景链；它们不是相互委派工作的自主智能体团队，没有Supervisor或Agent间消息总线 |
 | 是否一个智能体、多线程？ | 不是。统一模型工厂不等于共享一个智能体实例；同一个模型服务处理不同场景请求，各请求的提示词、权限及证据独立组织 |
-| 是否使用ReAct或自动工具调用？ | 当前没有`createAgent`/ReAct循环或让模型自行选择工具的执行器；数据库查询、检索、校验和保存均由业务代码控制顺序 |
+| 是否使用ReAct或自动工具调用？ | 没有自由ReAct工具循环；图节点、条件分支和修正预算由代码定义，模型不持有数据库凭据或审批工具 |
 | 会话是什么？ | 会话是业务层的上下文与记录，不是操作系统线程、GPU进程或大模型内部持久会话；每次调用重新构造messages |
 | 审批是否由模型控制？ | 否。批准、驳回、补正、整改状态由授权接口和数据库事务控制，模型不持有审批或ERP写入工具 |
 | 哪些能力没有模型？ | 报表汇总、利润计算、库存候选筛选、合同结构核查及部分集团洞察摘要为确定性代码，不应全部包装成模型Agent |
@@ -165,6 +165,7 @@ flowchart LR
 | 模型适配 | LangChain `ChatOpenAI`，使用兼容Chat Completions协议，明确关闭Responses接口路径 | `src/server/model.ts`；产销接口当前另有同协议模型实例 |
 | 模型服务 | 当前DeepSeek云端API，默认模型`deepseek-flash`，地址与密钥由服务端变量传入 | `DEEPSEEK_BASE_URL / DEEPSEEK_MODEL / DEEPSEEK_API_KEY` |
 | 查询计划 | 模型JSON对象输出 → Zod计划结构校验 → SQL AST与权限白名单 → 只读执行 | `src/lib/query-plan.ts`、`src/lib/sql-guard.ts`、`src/server/question.ts` |
+| LangGraph工作流 | 数据洞察的条件修正分支；调价评估的并行取证、汇合、事实计算和模型评估 | `src/lib/agents/insight-graph.ts`、`src/lib/agents/pricing-graph.ts` |
 | ERP访问 | postgres客户端、受限只读角色、企业作用域和查询超时；模型不直接持有连接 | `src/server/db.ts`、`src/server/reports.ts` |
 | 知识检索 | 服务端Bearer认证HTTP访问OntoRAG；读取本体、文档、图谱及SPARQL结果 | `src/server/knowledge-graph.ts`、`src/server/governance-knowledge.ts` |
 | 业务持久化 | 平台Postgres存会话、业务结果、附件和办理事件 | `src/server/insight-history.ts`、`supabase/migrations/` |
@@ -220,7 +221,7 @@ sequenceDiagram
 GitHub main
   └─ Vercel构建Next.js应用
        ├─ 前端页面、报表、聊天抽屉
-       └─ Node.js业务函数：身份校验、场景编排、LangChain、模型输出校验
+       └─ Node.js业务函数：身份校验、LangGraph局部编排、LangChain、模型输出校验
             ├─ HTTPS → Supabase Auth
             ├─ Postgres连接池 → 平台platform表
             ├─ 只读Postgres连接池 → 项目外ERP public表
@@ -228,7 +229,7 @@ GitHub main
             └─ HTTPS → DeepSeek云端Chat Completions服务
 ```
 
-LangChain是Node.js依赖库，随应用构建部署，不是单独的“LangChain服务器”。Vercel函数实例可扩缩和回收，不能用进程内对象保存可靠会话或待审批任务。模型权重在云端提供方运行，本仓库不加载云端模型权重。
+LangChain和LangGraph均作为Node.js依赖随应用构建部署，没有独立智能体服务、官方Agent Server、Redis或新增部署许可证要求。Vercel函数实例可扩缩和回收，不能用进程内对象保存可靠会话或待审批任务。模型权重在云端提供方运行，本仓库不加载云端模型权重。现有模型、数据库与Vercel用量仍按原服务计费。
 
 OntoRAG按项目内独立子系统运维，可能与业务前端使用不同部署项目。本仓库只核实了消费侧接口，**不据此认定OntoRAG内部采用何种抽取模型、向量库、嵌入模型或磁盘持久化方式**；这些配置应由OntoRAG部署清单单独交付与验收。
 
@@ -247,7 +248,7 @@ GPU推理独立于Vercel部署。若模型与ERP只允许内网访问，应先�
 
 ### 4.4 场景一：数据洞察与NLP2SQL
 
-**链路**：`/api/chat` → 身份及会话归属 → ERP表结构/物料字典 → 查询计划模型 → 计划与SQL校验 → ERP只读执行 → 可选结果摘要模型 → 会话落库 → 文字、表格与图表。
+**链路**：`/api/chat` → 身份及会话归属 → ERP表结构/物料字典 → LangGraph `generate_plan` → `validate_plan` → `execute_query` → `explain_result` → 会话落库 → 文字、表格与图表。校验失败走`repair_plan`后重新校验；可修正SQL错误走`repair_sql`再执行；空SQL走`clarify`并跳过查询。
 
 - **会话**：使用`conversationId`，持久化在`platform.insight_conversation`和`platform.insight_message`；用户可新建、恢复和删除自己的会话。
 - **提示词**：系统层包含允许表、关联关系、金额单位、订单状态、成本口径、同义词及只读限制；上下文层带当前期间和企业；用户层使用自然问题，不要求用户填写SQL指令。12个常见问题仅写入输入草稿。
@@ -255,18 +256,21 @@ GPU推理独立于Vercel部署。若模型与ERP只允许内网访问，应先�
 - **长期记忆**：已保存会话是业务历史，不是模型自动学习。当前没有跨会话用户画像、向量记忆或自动积累的“经验规则库”。
 - **隔离**：会话绑定用户及角色、企业集合、权限的哈希快照；权限变化后旧会话不能按原范围继续读取。运行SQL仍重新校验当前身份，不信任历史SQL的授权。
 - **计划生成**：JSON输出模式＋Zod结构校验，兼容文本块与代码围栏；格式或SQL校验失败可修正一次。数据库返回允许修正的语法、别名或字段错误时，再做一次独立修正并重新校验。
+- **图状态**：保存本次计划、错误诊断、两类修正次数、结果和完成节点；响应附带`workflow`执行摘要，并随成功问数结果进入现有历史表。最多各修正一次，拒绝权限、连接和超时错误的SQL重写，摘要模型失败仍返回查询数据。取消信号传递到图和模型；数据库语句仍受8秒超时控制。
 - **执行**：服务端注入企业CTE；只读事务、8秒SQL超时、最多展示200行。数据库权限不足、连接错误和超时不会被当作SQL错误进行绕权修复。
 - **文件系统**：不提供模型读写文件或执行脚本的工具；会话保存在数据库，XLSX导出由应用代码完成。没有会话工作目录、沙箱或代码解释器。
 - **持久化边界**：成功响应写入问题、口径、查询和结果；当前没有完整的失败执行轨迹库，也没有LangGraph检查点。报表计算和集团固定摘要不等于另一个自主Agent。
 
-源码：`src/app/api/chat/route.ts`、`src/server/question.ts`、`src/lib/query-plan.ts`、`src/server/insight-history.ts`。
+源码：`src/app/api/chat/route.ts`、`src/server/question.ts`、`src/lib/agents/insight-graph.ts`、`src/lib/query-plan.ts`、`src/server/insight-history.ts`。
 
 ### 4.5 场景二：整批调价评估
 
-**链路**：`/api/pricing`的`analyze`动作 → 申请归属及企业授权 → 平台批次明细 → ERP近30日订单、申请方/授权工厂库存、可用的历史调价 → 证据JSON → 模型一次评估 → 保存批次`ai_text` → 管理员逐行审核。
+**链路**：`/api/pricing`的`analyze`动作 → 申请归属及企业授权 → 平台批次明细校验 → LangGraph并行执行`sales_evidence / inventory_evidence / history_evidence` → `check_evidence`汇合 → `calculate_line_facts` → `assess_batch` → 业务接口保存批次`ai_text` → 管理员逐行审核。
 
 - **会话**：按申请批次ID组织，不是聊天会话。一次评估覆盖整批多行，不会为每行启动独立Agent或会话线程。
 - **提示词**：固定“调价辅助审核员”角色，要求整批概览、逐行分析、理由可信度、缺项与建议；将申请理由和原件内容视为数据，禁止自动批准。
+- **程序事实**：逐行计算调价差额、幅度、申请金额、近30日销量与不含税均价，以及各公司库存减占用量；均价不直接与含税申请价比较，未建立供货关系的工厂库存不认定可调配。无订单或库存记录标为缺项，不冒充零需求或零库存。
+- **执行和保存**：三路取证全部完成后才评估；必要ERP查询失败则终止，不让模型编造。历史源缺项沿用显式降级；模型空响应不保存。保存时比对数据库原始精度的批次更新时间，评估期间发生审核或其他评估更新时返回409，防止覆盖新结果。API返回`findings`及`workflow`，本期不新增独立运行台账表。
 - **记忆**：每次重新取当前证据；ERP历史价格是业务证据，不是Agent记忆。当前不自动继承上次模型对话，已保存AI文字不会自动成为下一次评估的上下文。
 - **文件**：XLSX由服务端应用解析，用户确认后保存结构化申请行；模型主要接收结构化明细，不具备任意打开用户文件或鉴定原件真伪的能力。
 - **结果与审批**：AI文本可被重新评估覆盖，逐行审核状态、版本和审核事件由数据库事务保存。当前尚未建立每次评估的不可变输入/输出版本档案，需后续补充证据哈希和评估版本。
@@ -335,21 +339,18 @@ GPU推理独立于Vercel部署。若模型与ERP只允许内网访问，应先�
 
 生产不应依赖Vercel进程内变量或临时文件保存会话、知识库、附件、模型权重及待审批任务。文件“已上传”、知识“已抽取”和条款“正式生效”应是不同状态，不能自动互相推定。
 
-### 4.10 后续编排演进：何时采用LangGraph
+### 4.10 当前部署边界与后续演进
 
-**近期方案继续采用多场景链＋共享LangChain底座。** 当前以有界查询、一次性评估和独立人工审批为主，先完善输入证据、结构化输出、任务幂等及运行记录，不为统一名称而迁移全部场景。
+本期只在现有Vercel应用中引入两套LangGraph SDK工作流，不部署独立服务，不接入官方Agent Server，也不新增Redis、Kubernetes或LangSmith付费服务。两个图均在当前HTTP请求内执行；每次创建绑定本次授权工具的图，不共享用户状态。
 
-如果正式实施要求长文件分段、整批多步骤评估、中途人工确认、跨请求恢复或多分支重试，则可在**对应场景**引入LangGraph；这是未来方案，当前未实现：
+- **会话和审批**：问数沿用业务数据库会话，调价沿用申请批次；没有将会话ID直接当作LangGraph线程ID。人工审核在业务系统独立进行，不占用图等待。
+- **持久化**：保存现有会话结果和批次AI文本，没有持久检查点，也没有失败后跨请求自动恢复。LangGraph节点重试必须有界，业务写入由接口事务控制。
+- **部署限制**：LangGraph不会取消Vercel请求时限，也不会在请求结束后自动后台运行。长任务若超出时限，应另行选择持久执行器，明确调度、重试、幂等和任务恢复责任。
+- **后续范围**：治理问答优先优化检索和引用，其他简单模型调用不强制迁移。确有跨请求恢复需求再增加checkpointer；增加检查点时仍须另行解决执行触发与当前权限复核。
+- **测试**：`tests/insight-graph.test.ts`验证真实图的分支、修正次数、SQL安全、截断与取消；`tests/pricing-graph.test.ts`验证并行汇合、逐行计算、证据缺项和模型失败。图节点使用可替换工具，测试不依赖模型随机回答。
+- **真实联调**：启动本地服务后运行`npm run verify:langgraph`，通过浏览器登录、问数、同会话追问和调价页面评估，核对返回的LangGraph步骤与平台保存结果。使用`LIVE_TEST_EMAIL / LIVE_TEST_PASSWORD`或登录页已明确预填的演示账号；会调用真实模型及ERP，并更新一个已有批次的AI评估文字，不操作审核状态。测试会清理自己新建的问数会话，截图仅写入忽略的`.local/`目录。
 
-1. **图实例**：按调价评估、治理核查等业务分别定义图，共享模型、权限与检索工具；不做可以访问所有业务数据的超级Agent。
-2. **状态**：保存`run_id / user_id / company_id / business_id / input_version / evidence_refs / plan / findings / review_status / errors`等明确字段，不仅保存聊天messages。
-3. **节点**：鉴权 → 取证 → 解析 → 检索 → 模型评估 → 校验 → 人工确认 → 结果写入；确定性节点负责数值与状态，模型节点负责语义理解。
-4. **线程和检查点**：`thread_id`属于某个图的执行上下文，不代表用户账号。与租户、业务记录、运行ID建立映射，使用持久checkpointer；每次恢复重新核验权限和输入版本。
-5. **人工等待**：审批仍是业务系统操作。图在持久节点暂停，审核事件驱动后续恢复；不在Vercel函数中轮询等待人工操作。
-6. **部署执行器**：LangGraph图定义是应用代码；长时间执行需要可恢复的任务执行器/worker及数据库。接入队列或其他Workflow产品时明确唯一的调度和重试责任，避免两套引擎重复重试、重复写入或计费。
-7. **文件与记忆**：检查点存状态和文件引用，原件放对象存储，正式知识放OntoRAG；不将所有附件、图谱或历史结果塞进图状态。
-
-无论是否采用LangGraph，都不默认建设独立“Agent文件系统”或允许模型运行任意代码。真正需要代码执行时再引入隔离沙箱、受控网络与资源额度，并作为独立安全能力验收。
+不向模型开放任意代码执行、文件系统或业务审批权限。后续如引入这些能力，需要单独设计资源、权限与审计边界。
 
 ## 5. 技术详细方案
 
