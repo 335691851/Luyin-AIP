@@ -270,6 +270,7 @@ export default function LivePricing({
         </section>
       )}
       <Modal
+        className="pricing-create-modal"
         title="新建调价申请 · 一批多行"
         width={950}
         open={open}
@@ -373,7 +374,7 @@ export default function LivePricing({
                     className="panel"
                     style={{ padding: 14, marginBottom: 12 }}
                   >
-                    <Space wrap align="start">
+                    <Space wrap align="start" className="pricing-line-fields">
                       <Form.Item
                         name={[f.name, "materialId"]}
                         label={`第${f.name + 1}行 · ERP产品`}
@@ -422,14 +423,16 @@ export default function LivePricing({
               </>
             )}
           </Form.List>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={busy}
-            style={{ marginTop: 16 }}
-          >
-            提交申请
-          </Button>
+          <div className="pricing-submit-footer">
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={busy}
+              style={{ marginTop: 16 }}
+            >
+              提交申请
+            </Button>
+          </div>
         </Form>
       </Modal>
       <Drawer

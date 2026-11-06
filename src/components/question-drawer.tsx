@@ -216,6 +216,7 @@ export default function QuestionDrawer({
         onClose={() => setOpen(false)}
         size={900}
         className="question-drawer"
+        rootClassName="question-drawer-root"
       >
         <div className="question-context">
           <span>当前页面上下文</span>

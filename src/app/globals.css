@@ -4333,3 +4333,663 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Mobile workspace: readable controls, contained tables, safe areas and keyboard-aware chat. */
+@media (max-width: 650px) {
+  body {
+    font-size: 14px;
+  }
+  .app-shell,
+  .body-shell,
+  .main,
+  .page {
+    min-width: 0;
+  }
+  .topbar,
+  .topbar:has(.governance-view-switch) {
+    height: auto;
+    min-height: 62px;
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .topbar .brand {
+    margin-right: auto;
+  }
+  .app-company-logo {
+    width: 132px;
+  }
+  .topbar .top-right {
+    display: contents;
+  }
+  .topbar .top-right > .ant-tag,
+  .topbar .top-right > .avatar,
+  .topbar .top-meta {
+    display: none;
+  }
+  .topbar .top-right > a[aria-label] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+  .topbar .top-right > .ant-btn {
+    min-height: 40px;
+    font-size: 12px;
+    padding-inline: 10px;
+  }
+  .topbar .governance-view-switch {
+    order: 10;
+    flex: 1 0 100%;
+    display: flex;
+    gap: 8px !important;
+    margin: 0;
+  }
+  .topbar .governance-view-switch > .ant-space-item {
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar .governance-native-select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 40px;
+    font-size: 14px;
+    text-overflow: ellipsis;
+  }
+  .contextbar {
+    min-height: 48px;
+    height: auto;
+    padding: 5px 12px;
+    gap: 6px;
+  }
+  .contextbar > .ant-space {
+    min-width: 0;
+    gap: 6px !important;
+  }
+  .contextbar > .ant-space > .ant-space-item:nth-child(2),
+  .contextbar > .ant-space > .ant-space-item:nth-child(3) {
+    display: none;
+  }
+  .contextbar b {
+    font-size: 13px;
+  }
+  .context-meta {
+    min-width: 0;
+    max-width: 45%;
+  }
+  .context-scope {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    font-size: 10px;
+  }
+  .context-date {
+    display: none;
+  }
+  .mobile-toggle.ant-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .body-shell .main > .page {
+    padding: 12px 12px calc(84px + env(safe-area-inset-bottom));
+  }
+  .page-heading.compact-heading {
+    margin-bottom: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .page-heading.compact-heading h1 {
+    font-size: 18px;
+  }
+  .compact-heading .ant-btn {
+    min-height: 40px;
+    font-size: 12px !important;
+  }
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .filters label {
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .filters label .ant-select,
+  .filters label select,
+  .filters label input {
+    width: 100% !important;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .filters > .ant-input-affix-wrapper {
+    grid-column: 1/-1;
+    min-width: 0;
+    width: 100% !important;
+  }
+  .filters .ant-select,
+  .filters .ant-input-affix-wrapper,
+  .period-select {
+    min-height: 40px;
+  }
+  input.ant-input,
+  textarea.ant-input,
+  input[type="date"],
+  input[type="month"],
+  .period-select,
+  .question-history-toolbar select,
+  .insight-question-picker select {
+    font-size: 16px;
+  }
+  .ant-select-selection-item {
+    font-size: 14px;
+  }
+  .page .panel {
+    min-width: 0;
+  }
+  .page .ant-table-wrapper {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .page .ant-table-content {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page .ant-table table {
+    min-width: 640px;
+  }
+  .page .ant-table-thead > tr > th,
+  .page .ant-table-tbody > tr > td {
+    font-size: 12px;
+    padding: 12px 10px;
+  }
+  .ant-pagination {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .report-table-area .report-section-heading::after {
+    content: "左右滑动查看完整表格";
+    font-size: 10px;
+    color: #8b95a4;
+  }
+  .report-template-bar > div {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .report-template-bar [role="tab"] {
+    flex-shrink: 0;
+    min-height: 40px;
+    font-size: 12px;
+    padding-inline: 12px;
+  }
+  .report-meta {
+    font-size: 11px;
+    padding: 10px 12px;
+  }
+  .report-metrics {
+    gap: 14px 0;
+    padding: 16px 12px;
+  }
+  .report-metrics strong {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+  }
+  .report-metrics small,
+  .report-metrics span {
+    font-size: 11px;
+  }
+  .report-paper-heading h1 {
+    font-size: 17px;
+  }
+  .report-table-area {
+    min-width: 0;
+  }
+  .report-visuals {
+    min-width: 0;
+  }
+  .panel-title {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .panel-title > .ant-space {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .panel-title .ant-btn,
+  .candidate-card .ant-btn {
+    min-height: 40px;
+  }
+  .coordination-types {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+  }
+  .coordination-types > button {
+    flex: 0 0 70%;
+    text-align: left;
+    min-height: 96px;
+    scroll-snap-align: start;
+  }
+  .coordination-types b {
+    font-size: 14px;
+  }
+  .coordination-types small {
+    font-size: 11px;
+  }
+  .candidate-summary {
+    flex-wrap: wrap;
+  }
+  .candidate-card {
+    padding: 14px 14px 0;
+  }
+  .candidate-card > footer {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ant-drawer {
+    height: var(--visual-viewport-height, 100dvh);
+    bottom: auto;
+  }
+  .ant-drawer:not(.mobile-navigation-root) > .ant-drawer-content-wrapper {
+    width: 100% !important;
+    max-width: 100vw;
+  }
+  .ant-drawer .ant-drawer-header {
+    padding: 12px 14px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .ant-drawer .ant-drawer-close {
+    min-width: 40px;
+    min-height: 40px;
+    margin-inline-end: 6px;
+  }
+  .ant-drawer .ant-drawer-body {
+    padding: 14px;
+    min-width: 0;
+    overscroll-behavior: contain;
+  }
+  .ant-drawer .ant-drawer-footer {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .mobile-navigation .ant-drawer-content-wrapper {
+    width: min(288px, 88vw) !important;
+  }
+  .mobile-navigation .ant-drawer-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 12px;
+  }
+  .mobile-navigation .workspace-label {
+    padding-inline: 8px;
+  }
+  .mobile-navigation .platform-switch {
+    margin: 0 0 8px;
+  }
+  .mobile-navigation .platform-switch a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .mobile-navigation .nav-caption {
+    padding: 4px 10px;
+  }
+  .mobile-navigation .nav-link {
+    min-height: 46px;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  .mobile-navigation .sidebar-bottom {
+    position: static;
+    width: auto;
+    margin-top: auto;
+    padding: 16px 8px 8px;
+  }
+  .question-drawer .ant-drawer-body {
+    padding: 0;
+  }
+  .question-context {
+    padding: 9px 14px;
+    gap: 4px 8px;
+  }
+  .question-context > span {
+    display: none;
+  }
+  .question-context small {
+    font-size: 11px;
+  }
+  .question-history-toolbar {
+    padding: 9px 12px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .question-history-toolbar label {
+    flex-basis: 100%;
+  }
+  .question-history-toolbar .ant-btn {
+    min-height: 38px;
+  }
+  .question-history-toolbar small {
+    display: none;
+  }
+  .question-thread {
+    padding: 14px 12px;
+    overscroll-behavior: contain;
+  }
+  .assistant-greeting {
+    padding: 16px 4px 0;
+  }
+  .assistant-greeting h3 {
+    font-size: 16px;
+  }
+  .assistant-greeting p {
+    font-size: 12px;
+  }
+  .insight-common-prompts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .insight-common-prompts button {
+    font-size: 12px;
+    padding: 10px;
+    min-height: 66px;
+  }
+  .question-compose {
+    padding: 10px 12px max(12px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
+  }
+  .question-compose > div {
+    gap: 8px;
+  }
+  .question-compose > div > small {
+    font-size: 10px;
+  }
+  .question-compose .ant-btn {
+    min-height: 42px;
+    min-width: 76px;
+  }
+  .insight-question-picker {
+    font-size: 12px;
+    gap: 8px;
+  }
+  .insight-question-picker select {
+    min-height: 40px;
+  }
+  .insight-launcher {
+    bottom: max(14px, env(safe-area-inset-bottom));
+    right: 12px;
+  }
+  .assistant-fab.insight-fab {
+    min-width: 0;
+    padding: 7px 14px 7px 7px;
+    grid-template-columns: 36px auto;
+    box-shadow: 0 5px 20px #8f28352b;
+  }
+  .assistant-fab.insight-fab > .insight-emblem {
+    width: 36px;
+    height: 36px;
+  }
+  .assistant-fab.insight-fab small {
+    display: none;
+  }
+  .assistant-fab.insight-fab b {
+    font-size: 13px;
+    align-self: center;
+  }
+  .ant-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    top: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    margin: auto;
+  }
+  .ant-modal .ant-modal-container {
+    padding: 16px;
+  }
+  .ant-modal .ant-modal-body {
+    max-height: calc(var(--visual-viewport-height, 100dvh) - 172px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .pricing-create-modal .ant-space {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px !important;
+  }
+  .pricing-create-modal .ant-space-item {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .pricing-create-modal .ant-select,
+  .pricing-create-modal .ant-input-number {
+    width: 100% !important;
+  }
+  .pricing-create-modal .ant-btn {
+    min-height: 40px;
+  }
+  .governance-chat {
+    height: calc(
+      var(--visual-viewport-height, 100dvh) -
+        var(--workspace-header-height, 108px) - 122px
+    );
+    min-height: 380px;
+  }
+  .governance-chat-header {
+    flex-shrink: 0;
+  }
+  .governance-chat-input textarea.ant-input {
+    font-size: 16px;
+  }
+  .governance-chat-note {
+    font-size: 10px;
+  }
+  .governance-chat-composer {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
+  }
+  .daily-date-tools {
+    padding: 12px;
+    gap: 8px;
+  }
+  .daily-date-tools label {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .daily-date-tools input {
+    min-height: 40px;
+    max-width: 65%;
+  }
+  .daily-paper-title {
+    padding: 14px 12px;
+  }
+  .daily-paper-title h2 {
+    font-size: 19px;
+  }
+  .login {
+    min-height: 100dvh;
+  }
+  .login-brand {
+    padding: 20px;
+  }
+  .login > section {
+    padding: 24px 20px;
+  }
+  .login .ant-btn {
+    min-height: 44px;
+  }
+}
+@media (min-width: 651px) {
+  .mobile-navigation {
+    display: none;
+  }
+}
+@media (max-width: 360px) {
+  .app-company-logo {
+    width: 116px;
+  }
+  .insight-common-prompts {
+    grid-template-columns: 1fr;
+  }
+}
+/* Ant Design 6 places className on the dialog section; rootClassName owns overlay sizing. */
+@media (max-width: 650px) {
+  .ant-drawer:not(.mobile-navigation-root) > .ant-drawer-content-wrapper {
+    width: 100% !important;
+  }
+  .mobile-navigation-root .ant-drawer-content-wrapper {
+    width: min(288px, 88vw) !important;
+  }
+  .ant-drawer .ant-drawer-section .ant-drawer-header {
+    padding: 10px 12px;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .ant-drawer .ant-drawer-section .ant-drawer-body {
+    padding: 14px;
+  }
+  .ant-drawer.question-drawer-root .ant-drawer-body {
+    padding: 0;
+  }
+  .ant-drawer.mobile-navigation-root .ant-drawer-body {
+    padding: 14px 12px;
+  }
+  .question-drawer-root .question-thread {
+    min-height: 0;
+  }
+  .question-drawer-root .question-compose textarea {
+    font-size: 16px;
+  }
+}
+@media (min-width: 651px) {
+  .mobile-navigation-root {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  html[data-mobile-keyboard="true"] .question-history-toolbar,
+  html[data-mobile-keyboard="true"] .question-context,
+  html[data-mobile-keyboard="true"] .governance-chat-header,
+  html[data-mobile-keyboard="true"] .governance-chat-quick,
+  html[data-mobile-keyboard="true"] .governance-chat-note {
+    display: none;
+  }
+  html[data-mobile-keyboard="true"] .governance-chat {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 650px) {
+  .ant-modal-wrap.ant-modal-centered {
+    display: flex;
+    align-items: flex-start;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .ant-modal-wrap.ant-modal-centered::before {
+    display: none;
+  }
+  .ant-modal-wrap .ant-modal {
+    top: 0 !important;
+    margin: 0 auto;
+  }
+  .ant-modal .ant-modal-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(
+      var(--visual-viewport-height, 100dvh) - 24px - env(safe-area-inset-top)
+    );
+  }
+  .ant-modal .ant-modal-container .ant-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    max-height: calc(var(--visual-viewport-height, 100dvh) - 132px);
+  }
+  .pricing-create-modal .ant-space.pricing-line-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px !important;
+  }
+  .pricing-line-fields > .ant-space-item:first-child {
+    grid-column: 1/-1;
+  }
+  .pricing-line-fields .ant-form-item {
+    margin-bottom: 12px;
+  }
+  .pricing-create-modal .pricing-submit-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0;
+    background: #fff;
+    border-top: 1px solid var(--line);
+    z-index: 1;
+  }
+  .pricing-submit-footer > .ant-btn {
+    width: 100%;
+    margin-top: 0 !important;
+  }
+  .admin-top {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin-top > div {
+    min-width: 0;
+    gap: 8px;
+  }
+  .admin-top > div .ant-tag {
+    display: none;
+  }
+  .admin-top > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    font-size: 12px;
+  }
+  .admin-main {
+    padding: 16px 12px;
+    min-width: 0;
+  }
+  .admin-main .ant-table-wrapper {
+    max-width: 100%;
+  }
+  .admin-main .ant-table-content {
+    overflow-x: auto !important;
+  }
+  .admin-main .ant-table table {
+    min-width: 620px;
+  }
+  .admin-main .ant-table-cell {
+    font-size: 12px;
+  }
+  .admin-sidebar > a {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .admin-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+@media (max-width: 650px) {
+  input.ant-input-number-input,
+  .ant-select input,
+  .governance-native-select {
+    font-size: 16px;
+  }
+}

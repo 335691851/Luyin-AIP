@@ -229,6 +229,14 @@ function Workspace({
     [search, setSearch] = useState(""),
     [mobile, setMobile] = useState(false);
   const [reportPeriod, setReportPeriod] = useState("month");
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 651px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setMobile(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
   const [reportYear, setReportYear] = useState(shanghaiToday().slice(0, 4));
   const [lines, setLines] = useState<PriceLine[]>([]),
     [records, setRecords] = useState<GovernanceCase[]>([]),
@@ -504,6 +512,70 @@ function Workspace({
         </section>
       </div>
     );
+  const navigation = (
+    <>
+      <div className="workspace-label">
+        工作空间 <span>WORKSPACE</span>
+      </div>
+      <div className="platform-switch">
+        {operationNav.some((n) =>
+          can(session, pagePermission("operation", n[0])),
+        ) && (
+          <Link
+            className={area === "operation" ? "active" : ""}
+            onClick={() => setMobile(false)}
+            href={
+              can(session, "sales.view")
+                ? "/operation/reports"
+                : landing(session)
+            }
+          >
+            智能经营
+          </Link>
+        )}
+        {governanceNav.some((n) =>
+          can(session, pagePermission("governance", n[0])),
+        ) && (
+          <Link
+            className={area === "governance" ? "active" : ""}
+            onClick={() => setMobile(false)}
+            href={
+              can(session, "governance.view")
+                ? "/governance"
+                : "/governance/contracts"
+            }
+          >
+            监管风控
+          </Link>
+        )}
+      </div>
+      <div className="nav-caption">
+        {area === "operation"
+          ? "经营分析与辅助决策"
+          : perspective === "group"
+            ? "集团监督与问题处置"
+            : "本企业治理与自查"}
+      </div>
+      <nav>
+        {nav.map(([id, label, icon]) => (
+          <Link
+            key={id}
+            className={page === id ? "nav-link active" : "nav-link"}
+            href={`/${area}/${id === "overview" ? "" : id}`}
+            onClick={() => setMobile(false)}
+          >
+            {icon}
+            <span>{label}</span>
+            {page === id && <span className="nav-dot" />}
+          </Link>
+        ))}
+      </nav>
+      <div className="sidebar-bottom">
+        <span className="status-dot" /> LangChain · DeepSeek Flash
+        <small>鲁盐管理方 / 授权法人工作空间</small>
+      </div>
+    </>
+  );
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -595,72 +667,26 @@ function Workspace({
         </div>
       </header>
       <div className="body-shell">
-        <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
-          <div className="workspace-label">
-            工作空间 <span>WORKSPACE</span>
-          </div>
-          <div className="platform-switch">
-            {operationNav.some((n) =>
-              can(session, pagePermission("operation", n[0])),
-            ) && (
-              <Link
-                className={area === "operation" ? "active" : ""}
-                href={
-                  can(session, "sales.view")
-                    ? "/operation/reports"
-                    : landing(session)
-                }
-              >
-                智能经营
-              </Link>
-            )}
-            {governanceNav.some((n) =>
-              can(session, pagePermission("governance", n[0])),
-            ) && (
-              <Link
-                className={area === "governance" ? "active" : ""}
-                href={
-                  can(session, "governance.view")
-                    ? "/governance"
-                    : "/governance/contracts"
-                }
-              >
-                监管风控
-              </Link>
-            )}
-          </div>
-          <div className="nav-caption">
-            {area === "operation"
-              ? "经营分析与辅助决策"
-              : perspective === "group"
-                ? "集团监督与问题处置"
-                : "本企业治理与自查"}
-          </div>
-          <nav>
-            {nav.map(([id, label, icon]) => (
-              <Link
-                key={id}
-                className={page === id ? "nav-link active" : "nav-link"}
-                href={`/${area}/${id === "overview" ? "" : id}`}
-                onClick={() => setMobile(false)}
-              >
-                {icon}
-                <span>{label}</span>
-                {page === id && <span className="nav-dot" />}
-              </Link>
-            ))}
-          </nav>
-          <div className="sidebar-bottom">
-            <span className="status-dot" /> LangChain · DeepSeek Flash
-            <small>鲁盐管理方 / 授权法人工作空间</small>
-          </div>
-        </aside>
+        <aside className="sidebar">{navigation}</aside>
+        <Drawer
+          className="mobile-navigation"
+          rootClassName="mobile-navigation-root"
+          title="工作导航"
+          placement="left"
+          size={288}
+          open={mobile}
+          onClose={() => setMobile(false)}
+        >
+          {navigation}
+        </Drawer>
         <main className="main">
           <div className="contextbar">
             <Space>
               <Button
                 className="mobile-toggle"
                 aria-label="展开导航"
+                aria-expanded={mobile}
+                aria-haspopup="dialog"
                 icon={<MenuOutlined aria-hidden="true" />}
                 onClick={() => setMobile(!mobile)}
               />
