@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Input, Form, Alert, ConfigProvider } from "antd";
 import Link from "next/link";
 import Image from "next/image";
+import LoginPassword from "@/components/login-password";
 export default function Login() {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -59,14 +60,14 @@ export default function Login() {
               label="企业邮箱"
               rules={[{ required: true, type: "email" }]}
             >
-              <Input size="large" />
+              <Input size="large" autoComplete="username" />
             </Form.Item>
             <Form.Item
               name="password"
               label="密码"
               rules={[{ required: true }]}
             >
-              <Input.Password size="large" />
+              <LoginPassword />
             </Form.Item>
             <Button
               type="primary"
