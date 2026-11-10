@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { readGovernanceStream } from "@/lib/governance-stream";
+import { useProgressiveText } from "./use-progressive-text";
 import PricingAssessment from "./pricing-assessment";
 import {
   pricingStatusColors,
@@ -75,6 +76,7 @@ export default function LivePricing({
     [evidence, setEvidence] = useState<any>(null),
     [busy, setBusy] = useState(false),
     [tab, setTab] = useState("applications");
+  const visibleAi = useProgressiveText(ai);
   const [form] = Form.useForm();
   const [drafts, setDrafts] = useState<
     Record<string, { note: string; approved: number | null }>
@@ -543,8 +545,8 @@ export default function LivePricing({
               {assessmentError && (
                 <Alert type="warning" showIcon title={assessmentError} />
               )}
-              {ai || (!busy && batch.ai_text) ? (
-                <PricingAssessment text={ai || batch.ai_text!} />
+              {(ai && visibleAi) || (!busy && !ai && batch.ai_text) ? (
+                <PricingAssessment text={ai ? visibleAi : batch.ai_text!} />
               ) : (
                 <p className="pricing-assessment-placeholder">
                   {

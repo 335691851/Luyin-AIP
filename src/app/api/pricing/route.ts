@@ -212,7 +212,8 @@ export async function POST(req: Request) {
         {
           headers: {
             "Content-Type": "application/x-ndjson; charset=utf-8",
-            "Cache-Control": "no-store",
+            "Cache-Control": "no-store, no-transform",
+            "Content-Encoding": "identity",
             "X-Accel-Buffering": "no",
           },
         },

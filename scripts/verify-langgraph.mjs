@@ -116,6 +116,16 @@ try {
   await page
     .getByRole("button", { name: multi.id, exact: true })
     .click({ timeout: 90000 });
+  await page.evaluate(() => {
+    window.__pricingPaints = [];
+    window.__pricingPaintTimer = setInterval(() => {
+      const n =
+        document.querySelector('[aria-label="整批智能评估建议"]')?.textContent
+          ?.length || 0;
+      if (n && n !== window.__pricingPaints.at(-1))
+        window.__pricingPaints.push(n);
+    }, 50);
+  });
   const pricingResponse = page.waitForResponse(
     (r) => r.url().endsWith("/api/pricing") && r.request().method() === "POST",
     { timeout: 90000 },
@@ -167,6 +177,14 @@ try {
     path: ".local/langgraph-pricing.png",
     animations: "disabled",
   });
+  const paints = await page.evaluate(() => {
+    clearInterval(window.__pricingPaintTimer);
+    return window.__pricingPaints;
+  });
+  assert.ok(
+    paints.length >= 3,
+    "Browser must paint progressively, not only receive multiple chunks",
+  );
   const requestBody = pricingHttp.request().postDataJSON();
   const persisted = await (
     await context.request.get("/api/pricing", { timeout: 90000 })
