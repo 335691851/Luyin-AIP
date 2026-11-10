@@ -113,13 +113,9 @@ try {
   );
   await page.goto("/operation/pricing");
   await page.getByPlaceholder("搜索产品、事项或编号").fill(multi.id);
-  await expect(
-    page.getByRole("button", { name: "整批分析与审核", exact: true }).first(),
-  ).toBeVisible({ timeout: 90000 });
   await page
-    .getByRole("button", { name: "整批分析与审核", exact: true })
-    .first()
-    .click();
+    .getByRole("button", { name: multi.id, exact: true })
+    .click({ timeout: 90000 });
   const pricingResponse = page.waitForResponse(
     (r) => r.url().endsWith("/api/pricing") && r.request().method() === "POST",
     { timeout: 90000 },
@@ -128,7 +124,33 @@ try {
     .getByRole("button", { name: /智能评估|重新评估|生成评估|整批评估/ })
     .click();
   const pricingHttp = await pricingResponse;
-  const pricing = await pricingHttp.json();
+  let pricing;
+  if (
+    (pricingHttp.headers()["content-type"] || "").includes(
+      "application/x-ndjson",
+    )
+  ) {
+    await expect(
+      page.getByLabel("整批智能评估建议", { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
+    await expect(
+      page.getByRole("button", { name: "停止生成", exact: true }),
+    ).toBeVisible();
+    const events = (await pricingHttp.text())
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.ok(
+      events.filter((e) => e.type === "delta").length > 1,
+      "Must receive actual incremental model chunks",
+    );
+    assert.ok(
+      !events.some((e) => e.type === "error"),
+      "Stream returned an error",
+    );
+    pricing = events.find((e) => e.type === "done")?.result;
+    assert.ok(pricing, "Completed and persisted assessment required");
+  } else pricing = await pricingHttp.json();
   assert.equal(pricingHttp.status(), 200, pricing.error || "pricing failed");
   assert.equal(pricing.workflow?.engine, "langgraph");
   assert.equal(pricing.findings.length, pricing.evidence.lines.length);
@@ -171,6 +193,13 @@ try {
       ? error.message.split("\n")[0]
       : "Verification failed",
   );
+  if (error instanceof Error)
+    console.error(
+      error.stack
+        ?.split("\n")
+        .filter((line) => line.includes("verify-langgraph.mjs"))
+        .join("\n"),
+    );
   process.exitCode = 1;
 } finally {
   for (const id of conversations) {

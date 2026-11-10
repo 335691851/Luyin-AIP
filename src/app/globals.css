@@ -5038,3 +5038,11 @@ h1 {
 .login-password-field:has(input[aria-invalid="true"]) {
   border-color: #ff4d4f;
 }
+
+.pricing-assessment-text .assessment-emphasis { color: #8e2732; }
+.pricing-assessment-text .assessment-risk { color: #bb2633; }
+.pricing-assessment-text .assessment-warning { color: #a56612; }
+.pricing-assessment-text .assessment-advice { color: #176b56; }
+.pricing-assessment-text table { min-width: 480px; width: 100%; border-collapse: collapse; }
+.pricing-assessment-text th, .pricing-assessment-text td { padding: 9px 12px; border: 1px solid #e3e7ed; text-align: left; }
+.pricing-assessment-text th { background: #f5f6f9; }

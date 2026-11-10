@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { readGovernanceStream } from "@/lib/governance-stream";
 import PricingAssessment from "./pricing-assessment";
 import {
   pricingStatusColors,
@@ -56,6 +57,10 @@ export default function LivePricing({
   canReview: boolean;
 }) {
   const { message } = App.useApp();
+  const assessmentAbort = useRef<AbortController | null>(null);
+  const [streamStatus, setStreamStatus] = useState("");
+  const [assessmentError, setAssessmentError] = useState("");
+  useEffect(() => () => assessmentAbort.current?.abort(), []);
   const [data, setData] = useState<{
     rows: Batch[];
     history: any[];
@@ -438,7 +443,10 @@ export default function LivePricing({
       <Drawer
         title="调价申请 · 整批智能评估与逐行审核"
         open={!!batch}
-        onClose={() => setActive(null)}
+        onClose={() => {
+          assessmentAbort.current?.abort();
+          setActive(null);
+        }}
         size={1100}
       >
         {batch && (
@@ -459,22 +467,83 @@ export default function LivePricing({
                   type="primary"
                   loading={busy}
                   onClick={async () => {
+                    const controller = new AbortController();
+                    assessmentAbort.current = controller;
                     setBusy(true);
+                    setAi("");
+                    setEvidence(null);
+                    setAssessmentError("");
+                    setStreamStatus("正在连接评估服务…");
                     try {
-                      const d = await post({ action: "analyze", id: batch.id });
-                      setAi(d.text);
-                      setEvidence(d.evidence);
+                      const response = await fetch("/api/pricing", {
+                        method: "POST",
+                        signal: controller.signal,
+                        headers: {
+                          "Content-Type": "application/json",
+                          Accept: "application/x-ndjson",
+                        },
+                        body: JSON.stringify({
+                          action: "analyze",
+                          id: batch.id,
+                        }),
+                      });
+                      if (!response.ok)
+                        throw Error((await response.json()).error);
+                      if (!response.body) throw Error("评估服务未返回内容");
+                      await readGovernanceStream(response.body, (event) => {
+                        if (event.type === "status")
+                          setStreamStatus(event.message);
+                        if (event.type === "delta")
+                          setAi((previous) => previous + event.text);
+                        if (event.type === "done") {
+                          const result = (
+                            event as unknown as {
+                              result: { text: string; evidence: unknown };
+                            }
+                          ).result;
+                          setAi(result.text);
+                          setEvidence(result.evidence);
+                          setData((previous) => ({
+                            ...previous,
+                            rows: previous.rows.map((row) =>
+                              row.id === batch.id
+                                ? { ...row, ai_text: result.text }
+                                : row,
+                            ),
+                          }));
+                          setStreamStatus("评估已完成并保存");
+                        }
+                      });
                     } catch (e) {
-                      message.error((e as Error).message);
+                      setAssessmentError(
+                        controller.signal.aborted
+                          ? "评估已停止，部分内容未保存，请重新生成。"
+                          : (e as Error).message,
+                      );
                     } finally {
                       setBusy(false);
+                      assessmentAbort.current = null;
                     }
                   }}
                 >
                   生成智能评估
                 </Button>
               </div>
-              {ai || batch.ai_text ? (
+              {busy && (
+                <p role="status">
+                  {streamStatus}{" "}
+                  <Button
+                    size="small"
+                    onClick={() => assessmentAbort.current?.abort()}
+                  >
+                    停止生成
+                  </Button>
+                </p>
+              )}
+              {assessmentError && (
+                <Alert type="warning" showIcon title={assessmentError} />
+              )}
+              {ai || (!busy && batch.ai_text) ? (
                 <PricingAssessment text={ai || batch.ai_text!} />
               ) : (
                 <p className="pricing-assessment-placeholder">
