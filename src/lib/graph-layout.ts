@@ -15,15 +15,17 @@ export function graphPositions(nodes: GraphNode[], edges: GraphEdge[]) {
   });
   for (let step = 0; step < 240; step++) {
     const forces = positions.map((point) => ({
-      x: -point.x * 0.015,
-      y: -point.y * 0.015,
+      x: -point.x * 0.008,
+      y: -point.y * 0.008,
     }));
     for (let a = 0; a < positions.length; a++) {
       for (let b = a + 1; b < positions.length; b++) {
         const dx = positions[a].x - positions[b].x;
         const dy = positions[a].y - positions[b].y;
         const distance = Math.max(1, Math.hypot(dx, dy));
-        const strength = 1600 / (distance * distance);
+        // Leave room for short labels around nearby nodes, including hubs.
+        const strength =
+          1600 / (distance * distance) + Math.max(0, 72 - distance) * 0.5;
         const x = (dx / distance) * strength,
           y = (dy / distance) * strength;
         forces[a].x += x;
@@ -36,7 +38,7 @@ export function graphPositions(nodes: GraphNode[], edges: GraphEdge[]) {
       const dx = positions[b].x - positions[a].x;
       const dy = positions[b].y - positions[a].y;
       const distance = Math.max(1, Math.hypot(dx, dy));
-      const strength = (distance - 100) * 0.025;
+      const strength = (distance - 125) * 0.025;
       const x = (dx / distance) * strength,
         y = (dy / distance) * strength;
       forces[a].x += x;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
 import { chromium, expect } from "@playwright/test";
 
 // Real browser gestures against live graph data; does not modify business data.
@@ -10,6 +11,7 @@ const context = await browser.newContext({
 const page = await context.newPage();
 page.setDefaultTimeout(60000);
 let step = "login";
+mkdirSync(".local", { recursive: true });
 try {
   await page.goto("/login");
   if (process.env.LIVE_TEST_EMAIL && process.env.LIVE_TEST_PASSWORD) {
@@ -57,6 +59,9 @@ try {
             x: rect.left + matrix[4],
             y: rect.top + matrix[5],
             hittable: hit === graphic,
+            diameter:
+              graphic.childAt(0).getBoundingRect().width *
+              Math.abs(graphic.childAt(0).getComputedTransform()[0]),
           });
         }
       }
@@ -76,7 +81,17 @@ try {
     await expect.poll(() => inspect("settled"), { timeout: 25000 }).toBe(true);
     const state = await inspect();
     assert.ok(state.points.length > 0);
+    assert.ok(
+      state.points.every((p) => p.diameter <= 14),
+      "dots stay small at initial scale",
+    );
+    await page
+      .locator(".kg-canvas-wrap")
+      .screenshot({
+        path: `.local/graph-readable-${view === "领域本体" ? "ontology" : "instances"}.png`,
+      });
     step = `${view}:node-drag`;
+    await page.getByRole("button", { name: "拖动节点模式" }).click();
     for (let repetition = 0; repetition < 3; repetition++) {
       await expect
         .poll(() => inspect("settled"), { timeout: 25000 })
@@ -156,6 +171,15 @@ try {
     assert.ok(Math.abs((await inspect()).zoom - after.zoom) < 0.001);
     await page.getByRole("button", { name: "拖动节点模式" }).click();
     await page.getByLabel("关系名称", { exact: true }).uncheck();
+    for (let i = 0; i < 10; i++)
+      await page.getByRole("button", { name: "放大图谱", exact: true }).click();
+    await page.mouse.move(10, 10);
+    const maximum = await inspect();
+    assert.ok(
+      maximum.points.every((p) => p.diameter <= 14),
+      "dots stay small at maximum zoom",
+    );
+    await page.getByRole("button", { name: "重置视图", exact: true }).click();
     console.log(
       JSON.stringify({
         view,

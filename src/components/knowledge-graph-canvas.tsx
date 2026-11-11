@@ -6,9 +6,10 @@ import * as echarts from "echarts/core";
 import { GraphChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { LabelLayout } from "echarts/features";
 import type { GraphNode, GraphEdge } from "@/lib/knowledge-graph";
 import { graphPositions } from "@/lib/graph-layout";
-echarts.use([GraphChart, TooltipComponent, CanvasRenderer]);
+echarts.use([GraphChart, TooltipComponent, CanvasRenderer, LabelLayout]);
 
 const palette = [
   "#7452b6",
@@ -41,7 +42,7 @@ export default function KnowledgeGraphCanvas({
   const element = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.EChartsType | null>(null);
   const movedNodes = useRef(new Map<string, { x: number; y: number }>());
-  const [panMode, setPanMode] = useState(false);
+  const [panMode, setPanMode] = useState(true);
   const positions = useMemo(() => graphPositions(nodes, edges), [nodes, edges]);
   const interaction = useRef({ labels, panMode });
   interaction.current = { labels, panMode };
@@ -120,15 +121,25 @@ export default function KnowledgeGraphCanvas({
             draggable: !interaction.current.panMode,
             cursor: interaction.current.panMode ? "grab" : "move",
             zoom: 0.85,
+            // ECharts 6 treats zero as its default ratio (1). A tiny positive
+            // ratio keeps dots effectively fixed in screen pixels when zooming.
+            nodeScaleRatio: 0.000001,
             scaleLimit: { min: 0.2, max: 4 },
             edgeSymbol: ["none", "arrow"],
             edgeSymbolSize: [0, 6],
             emphasis: {
+              scale: 1.3,
               focus: "adjacency",
+              label: {
+                show: true,
+                width: 220,
+                overflow: "break",
+                fontWeight: "bold",
+              },
               itemStyle: {
                 color: "#d58a29",
                 borderColor: "#a66821",
-                borderWidth: 3,
+                borderWidth: 1.5,
               },
               lineStyle: { width: 2, opacity: 1 },
             },
@@ -136,10 +147,14 @@ export default function KnowledgeGraphCanvas({
               show: true,
               position: "right",
               fontSize: 11,
+              distance: 6,
+              width: 120,
+              overflow: "truncate",
               color: "#334155",
               backgroundColor: "rgba(255,255,255,.8)",
               padding: 2,
             },
+            labelLayout: { hideOverlap: true },
             edgeLabel: {
               show: interaction.current.labels,
               fontSize: 9,
@@ -149,7 +164,7 @@ export default function KnowledgeGraphCanvas({
             lineStyle: {
               color: "#b8c4d4",
               width: 1,
-              opacity: 0.65,
+              opacity: 0.4,
               curveness: 0.08,
             },
             data: nodes.map((n, i) => ({
@@ -157,10 +172,7 @@ export default function KnowledgeGraphCanvas({
               rawId: n.id,
               name: n.label.length > 12 ? `${n.label.slice(0, 12)}…` : n.label,
               fullName: `${n.label} · ${n.typeLabel}`,
-              symbolSize: Math.min(
-                36,
-                20 + Math.sqrt(degrees.get(n.id) || 0) * 3,
-              ),
+              symbolSize: Math.min(10, 6 + Math.sqrt(degrees.get(n.id) || 0)),
               x: positions[i].x,
               y: positions[i].y,
               itemStyle: {
@@ -173,7 +185,7 @@ export default function KnowledgeGraphCanvas({
                       ) % palette.length
                     ],
                 borderColor: "#fff",
-                borderWidth: 2,
+                borderWidth: 1,
               },
             })),
             links: edges.map((e) => ({
