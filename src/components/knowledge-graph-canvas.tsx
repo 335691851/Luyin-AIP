@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Space } from "antd";
 import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
 import * as echarts from "echarts/core";
@@ -7,6 +7,7 @@ import { GraphChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import type { GraphNode, GraphEdge } from "@/lib/knowledge-graph";
+import { graphPositions } from "@/lib/graph-layout";
 echarts.use([GraphChart, TooltipComponent, CanvasRenderer]);
 
 const palette = [
@@ -39,6 +40,11 @@ export default function KnowledgeGraphCanvas({
 }) {
   const element = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.EChartsType | null>(null);
+  const movedNodes = useRef(new Map<string, { x: number; y: number }>());
+  const [panMode, setPanMode] = useState(false);
+  const positions = useMemo(() => graphPositions(nodes, edges), [nodes, edges]);
+  const interaction = useRef({ labels, panMode });
+  interaction.current = { labels, panMode };
   const handlers = useRef({ onNode, onEdge });
   useEffect(() => {
     handlers.current = { onNode, onEdge };
@@ -49,6 +55,24 @@ export default function KnowledgeGraphCanvas({
       renderer: "canvas",
     });
     chart.current = instance;
+    let pressedNode: string | null = null;
+    instance.on("mousedown", (event) => {
+      pressedNode =
+        event.dataType === "node"
+          ? (event.data as { rawId: string }).rawId
+          : null;
+    });
+    instance.getZr().on("dragend", (event) => {
+      const matrix = event.target?.getComputedTransform();
+      if (pressedNode && matrix) {
+        const point = instance.convertFromPixel({ seriesIndex: 0 }, [
+          matrix[4],
+          matrix[5],
+        ]) as number[];
+        movedNodes.current.set(pressedNode, { x: point[0], y: point[1] });
+      }
+      pressedNode = null;
+    });
     instance.on("click", (event) => {
       const data = event.data as { rawId?: string; edgeId?: string };
       if (event.dataType === "edge" && data.edgeId)
@@ -66,6 +90,7 @@ export default function KnowledgeGraphCanvas({
   useEffect(() => {
     const instance = chart.current;
     if (!instance) return;
+    movedNodes.current.clear();
 
     const degrees = new Map<string, number>();
     for (const edge of edges)
@@ -73,7 +98,7 @@ export default function KnowledgeGraphCanvas({
         degrees.set(id, (degrees.get(id) || 0) + 1);
     instance.setOption(
       {
-        animationDurationUpdate: 200,
+        animation: false,
         textStyle: { fontFamily: "Microsoft YaHei, PingFang SC, sans-serif" },
         tooltip: {
           renderMode: "richText",
@@ -90,17 +115,12 @@ export default function KnowledgeGraphCanvas({
         series: [
           {
             type: "graph",
-            layout: "force",
+            layout: "none",
             roam: true,
-            draggable: true,
-            zoom: ontology ? 0.65 : 0.7,
+            draggable: !interaction.current.panMode,
+            cursor: interaction.current.panMode ? "grab" : "move",
+            zoom: 0.85,
             scaleLimit: { min: 0.2, max: 4 },
-            force: {
-              repulsion: ontology ? 480 : 180,
-              edgeLength: ontology ? [90, 160] : [55, 110],
-              gravity: 0.06,
-              layoutAnimation: false,
-            },
             edgeSymbol: ["none", "arrow"],
             edgeSymbolSize: [0, 6],
             emphasis: {
@@ -121,7 +141,7 @@ export default function KnowledgeGraphCanvas({
               padding: 2,
             },
             edgeLabel: {
-              show: labels,
+              show: interaction.current.labels,
               fontSize: 9,
               color: "#718096",
               formatter: "{c}",
@@ -139,10 +159,10 @@ export default function KnowledgeGraphCanvas({
               fullName: `${n.label} · ${n.typeLabel}`,
               symbolSize: Math.min(
                 36,
-                14 + Math.sqrt(degrees.get(n.id) || 0) * 3,
+                20 + Math.sqrt(degrees.get(n.id) || 0) * 3,
               ),
-              x: Math.cos((i / Math.max(nodes.length, 1)) * Math.PI * 2) * 220,
-              y: Math.sin((i / Math.max(nodes.length, 1)) * Math.PI * 2) * 220,
+              x: positions[i].x,
+              y: positions[i].y,
               itemStyle: {
                 color: ontology
                   ? "#7955b4"
@@ -171,7 +191,28 @@ export default function KnowledgeGraphCanvas({
       },
       { notMerge: true },
     );
-  }, [nodes, edges, ontology, labels, resetKey]);
+  }, [nodes, edges, ontology, positions, resetKey]);
+  useEffect(() => {
+    // Merge presentation changes so dragged positions and the viewport survive.
+    const instance = chart.current;
+    if (!instance) return;
+    const data = (
+      instance.getOption() as { series: { data: { id: string }[] }[] }
+    ).series[0].data;
+    instance.setOption({
+      series: [
+        {
+          data: data.map((node) => ({
+            ...node,
+            ...movedNodes.current.get(node.id),
+          })),
+          draggable: !panMode,
+          cursor: panMode ? "grab" : "move",
+          edgeLabel: { show: labels },
+        },
+      ],
+    });
+  }, [labels, panMode]);
   useEffect(() => {
     const instance = chart.current;
     if (!instance) return;
@@ -187,11 +228,13 @@ export default function KnowledgeGraphCanvas({
   const zoom = (factor: number) => {
     const instance = chart.current;
     if (!instance) return;
-    const current =
-      (instance.getOption() as { series?: { zoom?: number }[] }).series?.[0]
-        ?.zoom || 1;
-    instance.setOption({
-      series: [{ zoom: Math.min(4, Math.max(0.2, current * factor)) }],
+    // Roam changes only the viewport, without rebuilding the graph.
+    instance.dispatchAction({
+      type: "graphRoam",
+      seriesIndex: 0,
+      zoom: factor,
+      originX: instance.getWidth() / 2,
+      originY: instance.getHeight() / 2,
     });
   };
   return (
@@ -204,6 +247,22 @@ export default function KnowledgeGraphCanvas({
       />
       <Space className="kg-zoom">
         <Button
+          aria-label="拖动节点模式"
+          aria-pressed={!panMode}
+          type={!panMode ? "primary" : "default"}
+          onClick={() => setPanMode(false)}
+        >
+          拖动节点
+        </Button>
+        <Button
+          aria-label="平移画布模式"
+          aria-pressed={panMode}
+          type={panMode ? "primary" : "default"}
+          onClick={() => setPanMode(true)}
+        >
+          平移画布
+        </Button>
+        <Button
           aria-label="放大图谱"
           icon={<PlusOutlined />}
           onClick={() => zoom(1.25)}
@@ -215,7 +274,8 @@ export default function KnowledgeGraphCanvas({
         />
       </Space>
       <div className="kg-canvas-hint">
-        拖动节点 · 滚轮缩放 · 拖动空白处平移 · 点击节点或连线解析
+        {panMode ? "拖动任意位置平移画布" : "拖动圆点调整节点 · 拖动空白处平移"}{" "}
+        · 滚轮或双指缩放 · 点击查看解析
       </div>
     </div>
   );
