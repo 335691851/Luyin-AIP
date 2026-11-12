@@ -473,6 +473,37 @@ h1 {
   margin-top: 18px;
   margin-bottom: 18px;
 }
+
+.governance-routing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.governance-routing-cards a {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 14px 18px;
+  border: 1px solid #dbe2ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+}
+.governance-routing-cards a:hover {
+  border-color: #ad3036;
+  background: #fffafa;
+}
+.governance-routing-cards strong {
+  font-size: 24px;
+  color: #ad3036;
+}
+.governance-routing-cards span {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: #64748b;
+}
 .overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 265px;
@@ -5041,10 +5072,29 @@ h1 {
   border-color: #ff4d4f;
 }
 
-.pricing-assessment-text .assessment-emphasis { color: #8e2732; }
-.pricing-assessment-text .assessment-risk { color: #bb2633; }
-.pricing-assessment-text .assessment-warning { color: #a56612; }
-.pricing-assessment-text .assessment-advice { color: #176b56; }
-.pricing-assessment-text table { min-width: 480px; width: 100%; border-collapse: collapse; }
-.pricing-assessment-text th, .pricing-assessment-text td { padding: 9px 12px; border: 1px solid #e3e7ed; text-align: left; }
-.pricing-assessment-text th { background: #f5f6f9; }
+.pricing-assessment-text .assessment-emphasis {
+  color: #8e2732;
+}
+.pricing-assessment-text .assessment-risk {
+  color: #bb2633;
+}
+.pricing-assessment-text .assessment-warning {
+  color: #a56612;
+}
+.pricing-assessment-text .assessment-advice {
+  color: #176b56;
+}
+.pricing-assessment-text table {
+  min-width: 480px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.pricing-assessment-text th,
+.pricing-assessment-text td {
+  padding: 9px 12px;
+  border: 1px solid #e3e7ed;
+  text-align: left;
+}
+.pricing-assessment-text th {
+  background: #f5f6f9;
+}

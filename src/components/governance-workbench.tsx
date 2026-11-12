@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { isGroupReview } from "@/lib/governance-review";
 import PricingAssessment from "./pricing-assessment";
 import { readGovernanceStream } from "@/lib/governance-stream";
 import { useProgressiveText } from "./use-progressive-text";
@@ -169,12 +171,11 @@ export default function GovernanceWorkbench({
             ? page === "risks"
               ? r.item_kind === "important_risk" && r.severity === "重要"
               : page === "reviews"
-                ? r.item_kind === "action" &&
-                  ["待审核", "已归档", "待补正", "已驳回"].includes(r.status)
+                ? isGroupReview(r, events)
                 : page === "contracts"
                   ? r.item_kind === "contract_risk"
                   : r.item_kind === "important_risk" ||
-                    (r.item_kind === "action" && r.status === "待审核")
+                    (isGroupReview(r, events) && r.status === "待审核")
             : page === "rectification"
               ? r.item_kind === "rectification"
               : r.item_kind === "action"),
@@ -205,9 +206,21 @@ export default function GovernanceWorkbench({
   )
     delete actions["提请集团审核"];
   const allowed = view === "group" ? canReview : canCreate;
+  const groupPage =
+    view === "group" && ["overview", "risks", "reviews"].includes(page);
+  const reviewDetail = view === "group" && active?.item_kind === "action";
+  const reviewLabels: Record<string, string> = {
+    归档通过: "同意申请并归档",
+    不予通过: "不同意申请",
+    退回补正: "退回公司补充材料",
+    要求整改: "发现实质问题，要求整改",
+  };
   const columns: ColumnsType<GovernanceItem> = [
     {
-      title: "事项与治理领域",
+      title:
+        page === "reviews" && view === "group"
+          ? "公司申请与治理领域"
+          : "事项与治理领域",
       render: (_, r) => (
         <>
           <Tag
@@ -216,6 +229,15 @@ export default function GovernanceWorkbench({
             {r.data_source === "synthetic_graph" ? "演练数据" : "人工登记"}
           </Tag>
           <b>{r.title}</b>
+          {view === "group" && (
+            <div>
+              <Tag color={r.item_kind === "action" ? "blue" : "red"}>
+                {r.item_kind === "action"
+                  ? "公司提请 · 集团审议"
+                  : "重要问题 · 集团处置"}
+              </Tag>
+            </div>
+          )}
           <div className="muted">
             {r.category} ·{" "}
             {r.origin === "group" ? "集团监管发起" : "公司自查提交"}
@@ -224,7 +246,11 @@ export default function GovernanceWorkbench({
       ),
       width: 300,
     },
-    { title: "责任单位", dataIndex: "company", width: 210 },
+    {
+      title: view === "group" && page === "reviews" ? "申请单位" : "责任单位",
+      dataIndex: "company",
+      width: 210,
+    },
     { title: "责任人", dataIndex: "owner", width: 100 },
     { title: "期限", dataIndex: "deadline", width: 110 },
     {
@@ -254,7 +280,11 @@ export default function GovernanceWorkbench({
             setNote("");
           }}
         >
-          查看与办理
+          {view === "group"
+            ? r.item_kind === "action"
+              ? "查看申请并审议"
+              : "查看问题并处置"
+            : "查看与办理"}
         </Button>
       ),
     },
@@ -362,6 +392,55 @@ export default function GovernanceWorkbench({
             : "档案要求 → 治理动作 → 上传材料 → 公司审核 → 关联问题整改；重大事项提请集团审核"}
         </span>
       </div>
+      {groupPage && (
+        <Alert
+          showIcon
+          type={page === "risks" ? "warning" : "info"}
+          className="section-gap"
+          title={
+            page === "overview"
+              ? "集团监管总览：看全局、识别重点、分流待办"
+              : page === "risks"
+                ? "监管风险问题：集团主动审查与重要问题处置"
+                : "治理事项审核：审议下属公司正式提请的申请"
+          }
+          description={
+            page === "overview"
+              ? "汇总重要监管问题和待集团审议的申请。可直接发起审查；日常公司自查和一般内部审核不进入集团待办。"
+              : page === "risks"
+                ? "来源：集团发起审查、公司报告或经确认的重要风险。办理：核实问题 → 要求公司整改 → 公司反馈证据 → 集团复核销项。"
+                : "来源：下属公司完成内部审核后提请集团。集团不能代公司发起申请；由公司在重大事项程序等业务中提交材料、选择提请集团审核。材料不齐走补正，发现实质问题再要求整改；不同意申请不自动等于整改。"
+          }
+        />
+      )}
+      {view === "group" && page === "overview" && (
+        <div className="governance-routing-cards">
+          <Link href="/governance/risks">
+            <b>重要监管问题</b>
+            <strong>
+              {
+                selectedRows.filter(
+                  (r) =>
+                    r.item_kind === "important_risk" &&
+                    !terminal.includes(r.status),
+                ).length
+              }
+            </strong>
+            <span>需核实、处置或验收 → 进入问题台账</span>
+          </Link>
+          <Link href="/governance/reviews">
+            <b>公司提请集团审议</b>
+            <strong>
+              {
+                selectedRows.filter(
+                  (r) => isGroupReview(r, events) && r.status === "待审核",
+                ).length
+              }
+            </strong>
+            <span>需集团作出审议意见 → 进入申请待办</span>
+          </Link>
+        </div>
+      )}
       {selectedRows.some((r) => r.data_source === "synthetic_graph") && (
         <Alert
           type="warning"
@@ -390,48 +469,69 @@ export default function GovernanceWorkbench({
                 ).length,
               ],
             ]
-          : view === "company"
+          : view === "group" && page === "reviews"
             ? [
                 [
-                  page === "rectification" ? "关联整改任务" : "本域管理动作",
-                  selectedRows.length,
-                ],
-                [
-                  "待公司响应",
-                  selectedRows.filter((r) => r.status === "待响应").length,
-                ],
-                [
-                  "待公司审核",
-                  selectedRows.filter((r) =>
-                    ["待公司审核", "整改待验收"].includes(r.status),
-                  ).length,
-                ],
-                [
-                  "整改 / 补正中",
-                  selectedRows.filter((r) =>
-                    ["需整改", "待补正"].includes(r.status),
-                  ).length,
-                ],
-              ]
-            : [
-                ["本页事项", selectedRows.length],
-                [
-                  "待集团审核",
+                  "待集团审议",
                   selectedRows.filter((r) => r.status === "待审核").length,
                 ],
                 [
-                  "待补正 / 整改",
+                  "公司补正 / 整改中",
                   selectedRows.filter((r) =>
-                    ["需整改", "待补正"].includes(r.status),
+                    ["待补正", "需整改"].includes(r.status),
                   ).length,
                 ],
                 [
-                  "已完成",
-                  selectedRows.filter((r) =>
-                    ["已归档", "已闭环"].includes(r.status),
-                  ).length,
+                  "已同意归档",
+                  selectedRows.filter((r) => r.status === "已归档").length,
+                ],
+                [
+                  "未予同意",
+                  selectedRows.filter((r) => r.status === "已驳回").length,
                 ],
               ]
+            : view === "company"
+              ? [
+                  [
+                    page === "rectification" ? "关联整改任务" : "本域管理动作",
+                    selectedRows.length,
+                  ],
+                  [
+                    "待公司响应",
+                    selectedRows.filter((r) => r.status === "待响应").length,
+                  ],
+                  [
+                    "待公司审核",
+                    selectedRows.filter((r) =>
+                      ["待公司审核", "整改待验收"].includes(r.status),
+                    ).length,
+                  ],
+                  [
+                    "整改 / 补正中",
+                    selectedRows.filter((r) =>
+                      ["需整改", "待补正"].includes(r.status),
+                    ).length,
+                  ],
+                ]
+              : [
+                  ["本页事项", selectedRows.length],
+                  [
+                    "待集团审核",
+                    selectedRows.filter((r) => r.status === "待审核").length,
+                  ],
+                  [
+                    "待补正 / 整改",
+                    selectedRows.filter((r) =>
+                      ["需整改", "待补正"].includes(r.status),
+                    ).length,
+                  ],
+                  [
+                    "已完成",
+                    selectedRows.filter((r) =>
+                      ["已归档", "已闭环"].includes(r.status),
+                    ).length,
+                  ],
+                ]
         ).map(([label, value]) => (
           <div className="kpi" key={label}>
             <span className="kpi-label">{label}</span>
@@ -536,7 +636,11 @@ export default function GovernanceWorkbench({
         </div>
         {!company && view === "group" && (
           <p className="muted">
-            当前汇总授权范围内全部单位；可直接发起审查，并在表单中选择下属法人。
+            {page === "reviews"
+              ? "当前汇总授权范围内公司提请集团的申请；一般公司内部归档事项不纳入审议列表。"
+              : ["overview", "risks"].includes(page)
+                ? "当前汇总授权范围内全部单位；可直接发起审查，并在表单中选择下属法人。"
+                : "当前汇总授权范围内全部单位，可通过法人范围筛选责任单位。"}
           </p>
         )}
         {error && <Alert type="error" title={error} showIcon />}
@@ -673,7 +777,13 @@ export default function GovernanceWorkbench({
       </Modal>
       <Drawer
         open={!!active}
-        title={view === "group" ? "监管问题与审核处置" : "治理事项与整改反馈"}
+        title={
+          view === "group"
+            ? reviewDetail
+              ? "治理申请审议 · 集团作出意见"
+              : "监管问题处置 · 核实与整改验收"
+            : "治理事项与整改反馈"
+        }
         onClose={() => !busy && setActive(null)}
         styles={{ wrapper: { width: "min(760px,100vw)" } }}
       >
@@ -689,10 +799,26 @@ export default function GovernanceWorkbench({
             )}
             <Tag>{active.status}</Tag>
             <h2>{active.title}</h2>
+            {view === "group" && (
+              <Alert
+                type={reviewDetail ? "info" : "warning"}
+                showIcon
+                title={
+                  reviewDetail
+                    ? "审议前核对：公司是否已完成内部审核，事项是否确需集团决定"
+                    : "处置前核对：问题事实、影响范围与核查证据"
+                }
+                description={
+                  reviewDetail
+                    ? "核对提请事项、决策权限、材料版本及回避情况，再作出同意、不同意或退回补正的意见。集团意见回到公司的原申请，不另建重复申请。"
+                    : "核实后明确责任法人、整改要求、期限与验收标准；公司提交整改证据后，由集团复核销项。"
+                }
+              />
+            )}
             <p>
               {active.company} · {active.owner} · 期限 {active.deadline}
             </p>
-            <h3>适用依据</h3>
+            <h3>{reviewDetail ? "集团审议权限与制度依据" : "适用依据"}</h3>
             <p className="governance-detail-text">{active.basis}</p>
             {!!active.source_refs?.length && (
               <>
@@ -708,9 +834,11 @@ export default function GovernanceWorkbench({
                 ))}
               </>
             )}
-            <h3>材料引用</h3>
+            <h3>{reviewDetail ? "公司提请材料" : "核查材料引用"}</h3>
             <p className="governance-detail-text">{active.materials}</p>
-            <h3>问题 / 自查结果</h3>
+            <h3>
+              {reviewDetail ? "公司申请说明与内部审核情况" : "问题 / 自查结果"}
+            </h3>
             <p className="governance-detail-text">{active.finding}</p>
             {active.item_kind === "rectification" && (
               <Alert
@@ -867,7 +995,11 @@ export default function GovernanceWorkbench({
             {allowed && Object.keys(actions).length > 0 && (
               <>
                 <h3>
-                  {view === "group" ? "审核与处置" : "提交补正 / 整改反馈"}
+                  {reviewDetail
+                    ? "集团审议意见"
+                    : view === "group"
+                      ? "监管处置与验收"
+                      : "提交补正 / 整改反馈"}
                 </h3>
                 <Select
                   aria-label="治理办理操作"
@@ -888,7 +1020,9 @@ export default function GovernanceWorkbench({
                     )
                     .map((value) => ({
                       value,
-                      label: value,
+                      label: reviewDetail
+                        ? reviewLabels[value] || value
+                        : value,
                     }))}
                 />
                 <Input.TextArea
@@ -897,7 +1031,11 @@ export default function GovernanceWorkbench({
                   onChange={(e) => setNote(e.target.value)}
                   rows={4}
                   style={{ margin: "14px 0" }}
-                  placeholder="填写审核依据，或整改、补正材料的引用和完成情况"
+                  placeholder={
+                    reviewDetail
+                      ? "填写集团审议依据、同意或不同意的理由及附加条件；材料不足时列明需补充的内容"
+                      : "填写问题核实依据、整改要求或验收证据；注明责任单位、整改期限与复核结论"
+                  }
                 />
                 <Button
                   type="primary"
@@ -912,7 +1050,11 @@ export default function GovernanceWorkbench({
                     })
                   }
                 >
-                  保存办理结果
+                  {reviewDetail
+                    ? "提交集团审议意见"
+                    : view === "group"
+                      ? "保存监管处置结果"
+                      : "保存办理结果"}
                 </Button>
               </>
             )}

@@ -42,12 +42,17 @@ try {
   step = "material-stream-ui";
   // Reuse the authenticated live company snapshot for UI rendering to avoid
   // concurrent dashboard refreshes competing with this material-stream test.
-  await page.route("**/api/governance?*", route => route.fulfill({json:company}));
+  await page.route("**/api/governance?*", (route) =>
+    route.fulfill({ json: company }),
+  );
   await page.goto("http://127.0.0.1:3100/governance");
   await page.locator(".governance-workbench table").waitFor();
-  await page.screenshot({path:".local/governance-v3-debug.png",fullPage:true});
+  await page.screenshot({
+    path: ".local/governance-v3-debug.png",
+    fullPage: true,
+  });
   await page
-    .getByRole("button", { name: "查看与办理", exact: true })
+    .getByRole("button", { name: /查看申请并审议|查看问题并处置|查看与办理/ })
     .first()
     .click();
   const response = page.waitForResponse(
