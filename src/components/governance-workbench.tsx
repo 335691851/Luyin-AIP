@@ -6,6 +6,7 @@ import { readGovernanceStream } from "@/lib/governance-stream";
 import { useProgressiveText } from "./use-progressive-text";
 import GovernanceChat from "./governance-chat";
 import ContractRisk from "./contract-risk";
+import CompanyPolicyLibrary from "./company-policy-library";
 import GovernanceRelationshipPanel from "./governance-relationship-panel";
 import {
   governanceBusinessDomains,
@@ -191,7 +192,7 @@ export default function GovernanceWorkbench({
           ? !governanceOrigin(r, rows)
           : governanceOrigin(r, rows)?.category === rectificationDomain)) &&
       (page === "archives"
-        ? r.item_kind === "archive"
+        ? r.item_kind === "archive" && !r.payload?.policyLibrary
         : page === "policies" || page === "assistant"
           ? true
           : view === "group"
@@ -448,6 +449,16 @@ export default function GovernanceWorkbench({
         />
       </section>
     );
+  if (page === "policies" && view === "company")
+    return (
+      <CompanyPolicyLibrary
+        key={company}
+        rows={companyRows}
+        company={company}
+        loading={loading}
+        error={error}
+      />
+    );
   if (page === "policies") {
     const refs = new Map<
       string,
@@ -583,7 +594,10 @@ export default function GovernanceWorkbench({
               <strong>
                 {
                   rows.filter(
-                    (r) => r.company === company && r.item_kind === "archive",
+                    (r) =>
+                      r.company === company &&
+                      r.item_kind === "archive" &&
+                      !r.payload?.policyLibrary,
                   ).length
                 }
               </strong>

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     )
       throw Error("FORBIDDEN");
     const archive =
-      await appDb()`select g.id::text,g.title,g.basis,g.materials,g.payload,g.source_refs from platform.governance_item g join public.company c on c.id=g.company_id where c.name=${p.company} and g.company_id=any(${u.companyIds}::int[]) and g.scenario_version=2 and g.item_kind='archive'`;
+      await appDb()`select g.id::text,g.title,g.basis,g.materials,g.payload,g.source_refs from platform.governance_item g join public.company c on c.id=g.company_id where c.name=${p.company} and g.company_id=any(${u.companyIds}::int[]) and g.scenario_version=2 and g.item_kind='archive' and coalesce(g.payload->>'policyLibrary','false') <> 'true'`;
     const abort = new AbortController();
     const signal = AbortSignal.any([req.signal, abort.signal]);
     const encoder = new TextEncoder();

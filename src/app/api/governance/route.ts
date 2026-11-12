@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     if (p.action === "generate") {
       if (p.view !== "company" || ids.length !== 1) throw Error("FORBIDDEN");
       const archive =
-        await appDb()`select id::text,title,payload,basis,source_refs from platform.governance_item where company_id=${ids[0]} and item_kind='archive' and scenario_version=2`;
+        await appDb()`select id::text,title,payload,basis,source_refs from platform.governance_item where company_id=${ids[0]} and item_kind='archive' and coalesce(payload->>'policyLibrary','false') <> 'true' and scenario_version=2`;
       if (!archive.length)
         return Response.json(
           { error: "本公司尚未配置治理档案" },
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
       const files =
         await appDb()`select filename,sha256,extracted_text from platform.governance_attachment where item_id=${id}`;
       const parents =
-        await appDb()`select title,payload,basis from platform.governance_item where company_id=${item.company_id} and item_kind='archive' and scenario_version=2`;
+        await appDb()`select title,payload,basis from platform.governance_item where company_id=${item.company_id} and item_kind='archive' and coalesce(payload->>'policyLibrary','false') <> 'true' and scenario_version=2`;
       const messages = [
         {
           role: "system",
