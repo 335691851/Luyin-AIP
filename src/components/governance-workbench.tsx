@@ -49,6 +49,7 @@ export default function GovernanceWorkbench({
   page,
   canCreate,
   canReview,
+  authorizedCompanies,
   search = "",
 }: {
   view: "group" | "company";
@@ -56,6 +57,7 @@ export default function GovernanceWorkbench({
   page: string;
   canCreate: boolean;
   canReview: boolean;
+  authorizedCompanies: string[];
   search?: string;
 }) {
   const { message } = App.useApp();
@@ -140,7 +142,14 @@ export default function GovernanceWorkbench({
       setActive(null);
       setNote("");
       await load();
-      message.success("事项与办理记录已保存");
+      message.success(
+        view === "group" &&
+          payload.action === "create" &&
+          company &&
+          payload.company !== company
+          ? `事项已保存至${payload.company}；当前列表仍按${company}筛选`
+          : "事项与办理记录已保存",
+      );
     } catch (e) {
       message.error(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -516,18 +525,18 @@ export default function GovernanceWorkbench({
                     ? "none"
                     : undefined,
               }}
-              disabled={!allowed || !company}
+              disabled={!allowed || (view === "company" && !company)}
               onClick={() => {
                 setOpen(true);
               }}
             >
-              {view === "group" ? "发起监管问题" : "提交治理管理动作"}
+              {view === "group" ? "发起审查" : "提交治理管理动作"}
             </Button>
           </Space>
         </div>
         {!company && view === "group" && (
           <p className="muted">
-            当前汇总授权范围内全部单位；发起监管问题前，请先在上方选择一个责任法人。
+            当前汇总授权范围内全部单位；可直接发起审查，并在表单中选择下属法人。
           </p>
         )}
         {error && <Alert type="error" title={error} showIcon />}
@@ -554,7 +563,7 @@ export default function GovernanceWorkbench({
       <Modal
         open={open}
         title={
-          view === "group" ? "登记下级单位监管问题" : "提交本企业治理与自查事项"
+          view === "group" ? "发起下属法人治理审查" : "提交本企业治理与自查事项"
         }
         footer={null}
         afterOpenChange={(visible) => {
@@ -564,15 +573,35 @@ export default function GovernanceWorkbench({
         width={700}
         destroyOnHidden
       >
-        <p>责任单位：{company}</p>
+        {view === "company" && <p>责任单位：{company}</p>}
         <Form
           form={form}
           initialValues={{
             category: categoryMap[page] || governanceCategories[1],
+            company: authorizedCompanies.includes(company)
+              ? company
+              : undefined,
           }}
           layout="vertical"
           onFinish={(v) => void submit({ action: "create", ...v })}
         >
+          {view === "group" && (
+            <Form.Item
+              name="company"
+              label="审查对象（下属法人）"
+              rules={[{ required: true, message: "请选择本次审查的下属法人" }]}
+            >
+              <Select
+                showSearch
+                optionFilterProp="label"
+                placeholder="选择下属法人"
+                options={authorizedCompanies.map((value) => ({
+                  value,
+                  label: value,
+                }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item
             name="category"
             label="治理领域"

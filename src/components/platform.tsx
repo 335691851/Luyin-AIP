@@ -1058,6 +1058,9 @@ function Workspace({
               )}
             {area === "governance" && !demo && page !== "graph" && (
               <GovernanceWorkbench
+                authorizedCompanies={session.companies.filter(
+                  (name) => name !== "山东省鲁盐集团有限公司",
+                )}
                 search={search}
                 view={perspective}
                 company={
