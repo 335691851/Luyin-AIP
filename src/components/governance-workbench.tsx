@@ -1,4 +1,7 @@
 "use client";
+import PricingAssessment from "./pricing-assessment";
+import { readGovernanceStream } from "@/lib/governance-stream";
+import { useProgressiveText } from "./use-progressive-text";
 import GovernanceChat from "./governance-chat";
 import ContractRisk from "./contract-risk";
 import { useEffect, useRef, useState } from "react";
@@ -57,6 +60,8 @@ export default function GovernanceWorkbench({
 }) {
   const { message } = App.useApp();
   const requestSequence = useRef(0);
+  const analysisAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => analysisAbort.current?.abort(), [view, company]);
   const [rows, setRows] = useState<GovernanceItem[]>([]),
     [events, setEvents] = useState<Event[]>([]),
     [loading, setLoading] = useState(true),
@@ -69,6 +74,7 @@ export default function GovernanceWorkbench({
     [note, setNote] = useState("");
   const [attachments, setAttachments] = useState<any[]>([]);
   const [analysis, setAnalysis] = useState("");
+  const visibleAnalysis = useProgressiveText(analysis);
   const [form] = Form.useForm();
   const load = async (signal?: AbortSignal) => {
     const ticket = ++requestSequence.current;
@@ -677,6 +683,16 @@ export default function GovernanceWorkbench({
             <p className="governance-detail-text">{active.materials}</p>
             <h3>问题 / 自查结果</h3>
             <p className="governance-detail-text">{active.finding}</p>
+            {active.item_kind === "rectification" && (
+              <Alert
+                type="info"
+                title="整改闭环要求"
+                description={
+                  active.payload?.acceptanceCriteria ||
+                  "依据原事项审核意见补正材料，上传整改证据后提交复核；公司整改由公司验收，集团下达事项由集团验收，未经复核不得销项。"
+                }
+              />
+            )}
             {active.parent_id && (
               <p>
                 关联来源：
@@ -760,8 +776,12 @@ export default function GovernanceWorkbench({
               loading={busy}
               onClick={async () => {
                 setBusy(true);
+                setAnalysis("");
+                const ctrl = new AbortController();
+                analysisAbort.current = ctrl;
                 try {
                   const r = await fetch("/api/governance", {
+                    signal: ctrl.signal,
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -771,9 +791,13 @@ export default function GovernanceWorkbench({
                       id: active.id,
                     }),
                   });
-                  const d = await r.json();
-                  if (!r.ok) throw Error(d.error);
-                  setAnalysis(d.text);
+                  if (!r.ok) throw Error((await r.json()).error);
+                  if (!r.body) throw Error("未收到核查内容");
+                  setAnalysis("");
+                  await readGovernanceStream(r.body, (event) => {
+                    if (event.type === "delta")
+                      setAnalysis((text) => text + event.text);
+                  });
                 } catch (e) {
                   message.error((e as Error).message);
                 } finally {
@@ -784,11 +808,11 @@ export default function GovernanceWorkbench({
               ✦ 智能核查材料
             </Button>
             {analysis && (
-              <div
-                className="assistant-response"
-                style={{ whiteSpace: "pre-wrap" }}
-              >
-                {analysis}
+              <div className="assistant-response">
+                <PricingAssessment
+                  text={visibleAnalysis}
+                  label="治理材料核查建议"
+                />
               </div>
             )}
             <h3>办理记录</h3>

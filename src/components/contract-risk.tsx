@@ -15,7 +15,9 @@ export default function ContractRisk() {
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
       setRows(d.rows);
-      setError(d.truncated ? "超过500个订单，请缩小分析期间" : "");
+      setError(
+        d.erpWarning || (d.truncated ? "超过500个订单，请缩小分析期间" : ""),
+      );
     } catch (e) {
       if (!signal?.aborted) setError((e as Error).message);
     } finally {
@@ -43,7 +45,7 @@ export default function ContractRisk() {
       </div>
       <Alert
         type="info"
-        title="只核查鲁盐集团法人。合同为年度覆盖候选，需人工确认框架性质、商品范围和签署原件；规则命中是核查线索。源库模拟订单保留标识。"
+        title="集团法人核查。平台模拟样本独立标记，用于演练合同、应收与凭证勾稽，不计作ERP真实经营数据；规则命中需人工复核。"
       />
       {error && <Alert type="warning" title={error} />}
       <div className="kpi-row">
@@ -78,7 +80,13 @@ export default function ContractRisk() {
                   <Button type="link" onClick={() => setActive(r)}>
                     {v}
                   </Button>
-                  {r.is_simulated && <Tag color="orange">ERP模拟</Tag>}
+                  {r.is_simulated && (
+                    <Tag color="orange">
+                      {r.data_source === "platform_simulation"
+                        ? "平台演练"
+                        : "ERP模拟"}
+                    </Tag>
+                  )}
                 </>
               ),
             },

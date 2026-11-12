@@ -1,11 +1,17 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { assessmentTone } from "../lib/pricing-presentation";
-export default function PricingAssessment({ text }: { text: string }) {
+export default function PricingAssessment({
+  text,
+  label = "整批智能评估建议",
+}: {
+  text: string;
+  label?: string;
+}) {
   return (
     <div
       className="pricing-assessment-text governance-markdown"
-      aria-label="整批智能评估建议"
+      aria-label={label}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

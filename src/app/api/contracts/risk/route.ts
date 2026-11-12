@@ -1,5 +1,5 @@
 import { identity, safeError } from "@/server/auth";
-import { erpDb } from "@/server/db";
+import { erpDb, appDb } from "@/server/db";
 import { can } from "@/lib/access";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,14 +17,24 @@ export async function GET(req: Request) {
       new Date().toISOString().slice(0, 7);
     if (!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month))
       throw Error("INVALID_REPORT_PERIOD");
-    const rows = await erpDb().begin(async (t) => {
-      await t`set transaction read only`;
-      await t`set local statement_timeout='12000'`;
-      return t`with orders as (select d.id,d.bill_no,d.bill_date,d.company_id,d.partner_id,d.net_cents,d.is_simulated,p.name as customer from public.document d left join public.partner p on p.id=d.partner_id where d.company_id=1 and d.type_code='sales_order' and d.status in ('approved','posted','closed') and d.bill_date>=${month + "-01"} and d.bill_date::date<${month + "-01"}::date+interval '1 month') select o.id,o.bill_no,o.bill_date,o.customer,o.net_cents/100.0 as revenue,o.is_simulated,
+    let erpWarning = "";
+    const rows = await erpDb()
+      .begin(async (t) => {
+        await t`set transaction read only`;
+        await t`set local statement_timeout='12000'`;
+        return t`with orders as (select d.id,d.bill_no,d.bill_date,d.company_id,d.partner_id,d.net_cents,d.is_simulated,p.name as customer from public.document d left join public.partner p on p.id=d.partner_id where d.company_id=1 and d.type_code='sales_order' and d.status in ('approved','posted','closed') and d.bill_date>=${month + "-01"} and d.bill_date::date<${month + "-01"}::date+interval '1 month') select o.id,o.bill_no,o.bill_date,o.customer,o.net_cents/100.0 as revenue,o.is_simulated,
  (select count(*)::int from public.sales_contract c join public.contract_customer cc on cc.contract_id=c.id where c.company_id=o.company_id and cc.partner_id=o.partner_id and c.status='approved' and c.valid_from::date<=date_trunc('year',o.bill_date::date)::date and c.valid_to::date>= (date_trunc('year',o.bill_date::date)+interval '1 year'-interval '1 day')::date) as annual_candidates,
  (select count(*)::int from public.sales_contract c join public.contract_customer cc on cc.contract_id=c.id join public.contract_attachment a on a.contract_id=c.id where c.company_id=o.company_id and cc.partner_id=o.partner_id and c.status='approved' and c.valid_from::date<=date_trunc('year',o.bill_date::date)::date and c.valid_to::date>= (date_trunc('year',o.bill_date::date)+interval '1 year'-interval '1 day')::date) as contract_files,
  j.* from orders o left join lateral (with recursive chain as (select o.id,0 as depth union select dl.target_id,ch.depth+1 from chain ch join public.document_link dl on dl.source_id=ch.id and dl.relation='source' join public.document d on d.id=dl.target_id and d.company_id=1 where ch.depth<4), bills as (select d.id,d.bill_no,d.net_cents from public.document d where d.id in(select id from chain) and d.type_code='ar_bill' and d.status in ('approved','posted','closed')), entries as (select v.id,v.document_id,sum(l.debit_cents) as debit,sum(l.credit_cents) as credit from public.voucher v left join public.voucher_line l on l.voucher_id=v.id where v.document_id in(select id from bills) and v.company_id=1 and v.status='posted' group by v.id,v.document_id) select (select count(*)::int from bills) as accounting_documents,(select string_agg(bill_no,', ') from bills) as bill_refs,count(e.id)::int as vouchers,count(*) filter(where e.debit<>e.credit or e.debit is null)::int as unbalanced,coalesce(sum(e.debit),0)/100.0 as debit,coalesce(sum(e.credit),0)/100.0 as credit from entries e) j on true order by o.bill_date desc,o.id limit 501`;
-    });
+      })
+      .catch((error: unknown) => {
+        const code = (error as { code?: string }).code;
+        erpWarning =
+          code === "42501"
+            ? "ERP只读账号缺少合同勾稽关联表读取权限；当前仅展示独立标记的平台演练数据，请管理员检查 partner、sales_contract、contract_customer、contract_attachment、document_link、voucher、voucher_line 的只读授权。"
+            : "ERP合同勾稽暂不可用；当前仅展示平台演练数据，请稍后重新核查。";
+        return [];
+      });
     const items = rows.slice(0, 500).map((r) => ({
       ...r,
       issues: [
@@ -40,9 +50,12 @@ export async function GET(req: Request) {
       basis:
         "集团销售订单→document_link来源链→应收单→voucher→voucher_line；合同按客户及自然年有效期匹配候选，尚未核验框架性质、SKU覆盖及签署原件。",
     }));
+    const samples =
+      await appDb()`select payload->'reconciliation' as sample from platform.governance_item where company_id=1 and data_source='synthetic_graph' and seed_key like 'gov-v3:contract:%' and payload->'reconciliation'->>'month'=${month}`;
     return Response.json({
-      rows: items,
+      rows: [...items, ...samples.map((r) => r.sample)],
       truncated: rows.length > 500,
+      erpWarning,
       month,
       company: "山东省鲁盐集团有限公司",
     });

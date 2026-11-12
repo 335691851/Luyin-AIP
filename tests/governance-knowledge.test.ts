@@ -18,6 +18,23 @@ const ids = Array.from(
 );
 
 describe("governance associated-document retrieval", () => {
+  it("deduplicates concurrent lookups within the same document scope", async () => {
+    await Promise.all([
+      governanceKnowledge([ids[0]], "缓存专用问题"),
+      governanceKnowledge([ids[0]], "缓存专用问题"),
+    ]);
+    expect(getKnowledgeGraph).toHaveBeenCalledTimes(1);
+    expect(getKnowledgeDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains available evidence when one referenced document fails", async () => {
+    vi.mocked(getKnowledgeGraph).mockRejectedValueOnce(
+      Error("temporarily unavailable"),
+    );
+    const result = await governanceKnowledge([ids[1], ids[2]], "局部失败问题");
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toContain(ids[2]);
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(getKnowledgeGraph).mockImplementation(
