@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import GovernanceNavigation from "./governance-navigation";
+import { governanceNavigation } from "@/lib/governance-navigation";
 const GovernanceWorkbench = dynamic(() => import("./governance-workbench"));
 const KnowledgeGraph = dynamic(() => import("./knowledge-graph"));
 const ReportCanvas = dynamic(() => import("./report-canvas"));
@@ -265,7 +267,7 @@ function Workspace({
       session?.user.company ||
       "";
   const groupNav = [
-    ["overview", "集团监管总览", <AppstoreOutlined key="go" />],
+    ["overview", "单位监管总览", <AppstoreOutlined key="go" />],
     ["risks", "监管风险问题", <SafetyCertificateOutlined key="ri" />],
     ["reviews", "治理事项审核", <AuditOutlined key="rv" />],
     ...governanceNav.filter((n) =>
@@ -556,20 +558,30 @@ function Workspace({
             ? "集团监督与问题处置"
             : "本企业治理与自查"}
       </div>
-      <nav>
-        {nav.map(([id, label, icon]) => (
-          <Link
-            key={id}
-            className={page === id ? "nav-link active" : "nav-link"}
-            href={`/${area}/${id === "overview" ? "" : id}`}
-            onClick={() => setMobile(false)}
-          >
-            {icon}
-            <span>{label}</span>
-            {page === id && <span className="nav-dot" />}
-          </Link>
-        ))}
-      </nav>
+      {area === "governance" ? (
+        <GovernanceNavigation
+          key={perspective}
+          view={perspective}
+          page={page}
+          entries={nav}
+          onNavigate={() => setMobile(false)}
+        />
+      ) : (
+        <nav>
+          {nav.map(([id, label, icon]) => (
+            <Link
+              key={id}
+              className={page === id ? "nav-link active" : "nav-link"}
+              href={`/${area}/${id === "overview" ? "" : id}`}
+              onClick={() => setMobile(false)}
+            >
+              {icon}
+              <span>{label}</span>
+              {page === id && <span className="nav-dot" />}
+            </Link>
+          ))}
+        </nav>
+      )}
       <div className="sidebar-bottom">
         <span className="status-dot" /> LangChain · DeepSeek Flash
         <small>鲁盐管理方 / 授权法人工作空间</small>
@@ -696,6 +708,21 @@ function Workspace({
                   : "鲁银监管和风控平台"}
               </span>
               <span className="muted">/</span>
+              {area === "governance" &&
+                governanceNavigation(perspective).find((g) =>
+                  g.pages.includes(page),
+                )?.title !== title && (
+                  <>
+                    <span className="governance-breadcrumb-topic">
+                      {
+                        governanceNavigation(perspective).find((g) =>
+                          g.pages.includes(page),
+                        )?.title
+                      }
+                    </span>
+                    <span className="muted">/</span>
+                  </>
+                )}
               <b>{title}</b>
             </Space>
             <div className="context-meta">
@@ -717,7 +744,11 @@ function Workspace({
               <span className="muted context-date">
                 {page === "graph"
                   ? "制度出处 · 关系解析"
-                  : "自然日历 · 订单口径"}
+                  : area === "governance"
+                    ? page === "contracts"
+                      ? "合同 · 凭证 · 账务"
+                      : "治理流程 · 制度依据"
+                    : "自然日历 · 订单口径"}
               </span>
             </div>
           </div>

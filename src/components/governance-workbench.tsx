@@ -178,7 +178,11 @@ export default function GovernanceWorkbench({
                     (isGroupReview(r, events) && r.status === "待审核")
             : page === "rectification"
               ? r.item_kind === "rectification"
-              : r.item_kind === "action"),
+              : page === "overview"
+                ? ["action", "rectification", "important_risk"].includes(
+                    r.item_kind || "",
+                  )
+                : r.item_kind === "action"),
   );
   const terminal = ["已归档", "已闭环", "已驳回"];
   const visible = selectedRows.filter(
@@ -234,13 +238,19 @@ export default function GovernanceWorkbench({
               <Tag color={r.item_kind === "action" ? "blue" : "red"}>
                 {r.item_kind === "action"
                   ? "公司提请 · 集团审议"
-                  : "重要问题 · 集团处置"}
+                  : r.item_kind === "contract_risk"
+                    ? "集团合同 · 自身风控"
+                    : "重要问题 · 集团处置"}
               </Tag>
             </div>
           )}
           <div className="muted">
             {r.category} ·{" "}
-            {r.origin === "group" ? "集团监管发起" : "公司自查提交"}
+            {r.origin === "group"
+              ? r.item_kind === "contract_risk"
+                ? "集团合同核查登记"
+                : "集团监管发起"
+              : "公司自查提交"}
           </div>
         </>
       ),
@@ -382,16 +392,18 @@ export default function GovernanceWorkbench({
   }
   return (
     <div className="governance-workbench">
-      <div className="governance-perspective-note">
-        <Tag color={view === "group" ? "red" : "blue"}>
-          {view === "group" ? "集团监管视角" : "公司治理与自查视角"}
-        </Tag>
-        <span>
-          {view === "group"
-            ? "聚焦重要监管问题处置与提请集团审核的事项；一般自查由公司内部办理"
-            : "档案要求 → 治理动作 → 上传材料 → 公司审核 → 关联问题整改；重大事项提请集团审核"}
-        </span>
-      </div>
+      {page !== "contracts" && page !== "overview" && (
+        <div className="governance-perspective-note">
+          <Tag color={view === "group" ? "red" : "blue"}>
+            {view === "group" ? "集团监管视角" : "公司治理与自查视角"}
+          </Tag>
+          <span>
+            {view === "group"
+              ? "聚焦重要监管问题处置与提请集团审核的事项；一般自查由公司内部办理"
+              : "档案要求 → 治理动作 → 上传材料 → 公司审核 → 关联问题整改；重大事项提请集团审核"}
+          </span>
+        </div>
+      )}
       {groupPage && (
         <Alert
           showIcon
@@ -399,7 +411,7 @@ export default function GovernanceWorkbench({
           className="section-gap"
           title={
             page === "overview"
-              ? "集团监管总览：看全局、识别重点、分流待办"
+              ? "单位监管总览：掌握下属单位重点问题与申请待办"
               : page === "risks"
                 ? "监管风险问题：集团主动审查与重要问题处置"
                 : "治理事项审核：审议下属公司正式提请的申请"
@@ -412,6 +424,69 @@ export default function GovernanceWorkbench({
                 : "来源：下属公司完成内部审核后提请集团。集团不能代公司发起申请；由公司在重大事项程序等业务中提交材料、选择提请集团审核。材料不齐走补正，发现实质问题再要求整改；不同意申请不自动等于整改。"
           }
         />
+      )}
+      {view === "company" && page === "overview" && (
+        <section
+          className="governance-workbench-hub"
+          aria-label="治理工作台办理导航"
+        >
+          <div className="governance-flow-path">
+            <Link href="/governance/archives">① 档案明确要求</Link>
+            <span>→</span>
+            <Link href="/governance/authority">② 业务上传与审核</Link>
+            <span>→</span>
+            <Link href="/governance/rectification">③ 问题整改与验收</Link>
+          </div>
+          <p className="muted">
+            工作台汇总本公司的事项；进入对应业务办理、提交材料和审核。档案与制度提供依据，整改任务关联原事项，重大事项在业务中提请集团。
+          </p>
+          <div className="governance-routing-cards">
+            {Object.entries(categoryMap)
+              .filter(([key]) => key !== "archives")
+              .map(([key, label]) => (
+                <Link key={key} href={`/governance/${key}`}>
+                  <b>{label}</b>
+                  <strong>
+                    {
+                      rows.filter(
+                        (r) =>
+                          r.company === company &&
+                          r.item_kind === "action" &&
+                          r.category === label &&
+                          !terminal.includes(r.status),
+                      ).length
+                    }
+                  </strong>
+                  <span>未完成事项 · 进入办理与材料审核</span>
+                </Link>
+              ))}
+            <Link href="/governance/rectification">
+              <b>整改与验收</b>
+              <strong>
+                {
+                  rows.filter(
+                    (r) =>
+                      r.company === company &&
+                      r.item_kind === "rectification" &&
+                      !terminal.includes(r.status),
+                  ).length
+                }
+              </strong>
+              <span>待闭环整改 · 查看来源、反馈与复核</span>
+            </Link>
+            <Link href="/governance/archives">
+              <b>公司治理档案</b>
+              <strong>
+                {
+                  rows.filter(
+                    (r) => r.company === company && r.item_kind === "archive",
+                  ).length
+                }
+              </strong>
+              <span>只读治理基线 · 为业务提供要求与依据</span>
+            </Link>
+          </div>
+        </section>
       )}
       {view === "group" && page === "overview" && (
         <div className="governance-routing-cards">
@@ -450,96 +525,100 @@ export default function GovernanceWorkbench({
         />
       )}
       {page === "contracts" && <ContractRisk />}
-      <div className="kpi-row">
-        {(view === "group" && page === "risks"
-          ? [
-              ["重要监管问题", selectedRows.length],
-              [
-                "待处置",
-                selectedRows.filter((r) => r.status === "需整改").length,
-              ],
-              [
-                "待集团复核",
-                selectedRows.filter((r) => r.status === "整改待验收").length,
-              ],
-              [
-                "已处置",
-                selectedRows.filter((r) =>
-                  ["已归档", "已闭环"].includes(r.status),
-                ).length,
-              ],
-            ]
-          : view === "group" && page === "reviews"
+      {page !== "contracts" && page !== "overview" && (
+        <div className="kpi-row">
+          {(view === "group" && page === "risks"
             ? [
+                ["重要监管问题", selectedRows.length],
                 [
-                  "待集团审议",
-                  selectedRows.filter((r) => r.status === "待审核").length,
+                  "待处置",
+                  selectedRows.filter((r) => r.status === "需整改").length,
                 ],
                 [
-                  "公司补正 / 整改中",
+                  "待集团复核",
+                  selectedRows.filter((r) => r.status === "整改待验收").length,
+                ],
+                [
+                  "已处置",
                   selectedRows.filter((r) =>
-                    ["待补正", "需整改"].includes(r.status),
+                    ["已归档", "已闭环"].includes(r.status),
                   ).length,
                 ],
-                [
-                  "已同意归档",
-                  selectedRows.filter((r) => r.status === "已归档").length,
-                ],
-                [
-                  "未予同意",
-                  selectedRows.filter((r) => r.status === "已驳回").length,
-                ],
               ]
-            : view === "company"
+            : view === "group" && page === "reviews"
               ? [
                   [
-                    page === "rectification" ? "关联整改任务" : "本域管理动作",
-                    selectedRows.length,
-                  ],
-                  [
-                    "待公司响应",
-                    selectedRows.filter((r) => r.status === "待响应").length,
-                  ],
-                  [
-                    "待公司审核",
-                    selectedRows.filter((r) =>
-                      ["待公司审核", "整改待验收"].includes(r.status),
-                    ).length,
-                  ],
-                  [
-                    "整改 / 补正中",
-                    selectedRows.filter((r) =>
-                      ["需整改", "待补正"].includes(r.status),
-                    ).length,
-                  ],
-                ]
-              : [
-                  ["本页事项", selectedRows.length],
-                  [
-                    "待集团审核",
+                    "待集团审议",
                     selectedRows.filter((r) => r.status === "待审核").length,
                   ],
                   [
-                    "待补正 / 整改",
+                    "公司补正 / 整改中",
                     selectedRows.filter((r) =>
-                      ["需整改", "待补正"].includes(r.status),
+                      ["待补正", "需整改"].includes(r.status),
                     ).length,
                   ],
                   [
-                    "已完成",
-                    selectedRows.filter((r) =>
-                      ["已归档", "已闭环"].includes(r.status),
-                    ).length,
+                    "已同意归档",
+                    selectedRows.filter((r) => r.status === "已归档").length,
+                  ],
+                  [
+                    "未予同意",
+                    selectedRows.filter((r) => r.status === "已驳回").length,
                   ],
                 ]
-        ).map(([label, value]) => (
-          <div className="kpi" key={label}>
-            <span className="kpi-label">{label}</span>
-            <strong>{loading ? "—" : value}</strong>
-            <small>依据已登记事项统计，含标记的演练数据</small>
-          </div>
-        ))}
-      </div>
+              : view === "company"
+                ? [
+                    [
+                      page === "rectification"
+                        ? "关联整改任务"
+                        : "本域管理动作",
+                      selectedRows.length,
+                    ],
+                    [
+                      "待公司响应",
+                      selectedRows.filter((r) => r.status === "待响应").length,
+                    ],
+                    [
+                      "待公司审核",
+                      selectedRows.filter((r) =>
+                        ["待公司审核", "整改待验收"].includes(r.status),
+                      ).length,
+                    ],
+                    [
+                      "整改 / 补正中",
+                      selectedRows.filter((r) =>
+                        ["需整改", "待补正"].includes(r.status),
+                      ).length,
+                    ],
+                  ]
+                : [
+                    ["本页事项", selectedRows.length],
+                    [
+                      "待集团审核",
+                      selectedRows.filter((r) => r.status === "待审核").length,
+                    ],
+                    [
+                      "待补正 / 整改",
+                      selectedRows.filter((r) =>
+                        ["需整改", "待补正"].includes(r.status),
+                      ).length,
+                    ],
+                    [
+                      "已完成",
+                      selectedRows.filter((r) =>
+                        ["已归档", "已闭环"].includes(r.status),
+                      ).length,
+                    ],
+                  ]
+          ).map(([label, value]) => (
+            <div className="kpi" key={label}>
+              <span className="kpi-label">{label}</span>
+              <strong>{loading ? "—" : value}</strong>
+              <small>依据已登记事项统计，含标记的演练数据</small>
+            </div>
+          ))}
+        </div>
+      )}
       <section className="panel">
         <div className="panel-title">
           <h2>
@@ -554,7 +633,7 @@ export default function GovernanceWorkbench({
                       ? "整改督办台账"
                       : "集团监管事项总览"
               : categoryMap[page] ||
-                (page === "rectification" ? "整改反馈台账" : "企业治理工作台")}
+                (page === "rectification" ? "整改反馈台账" : "治理事项与待办")}
           </h2>
           <Space wrap>
             {view === "company" && page !== "rectification" && (
