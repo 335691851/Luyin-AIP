@@ -21,6 +21,16 @@
 
 权限组的SELECT策略只给可信后端角色，不给anon/authenticated。每次应用请求仍由服务端检查Auth用户、平台角色和公司范围。直接Postgres连接没有浏览器JWT上下文，不能用auth.uid()不加处理地替代服务端授权。
 
+## 合同勾稽客户读取权限补充
+
+`templates/contract-reconciliation-reader.sql` 由 DBA 在既有 ERP 项目执行，针对实际运行角色 `erp_aip_runtime`。连接池用户名中的 `.项目编号` 不属于数据库角色名。此模板不创建账号或修改 ERP 业务记录。
+
+该补充只授予 `public.partner` 的 `id`、`name` 两列 SELECT 权限，并增加仅适用于该运行角色的 SELECT 行级策略：客户必须被集团法人（`company_id=1`）的销售订单引用。保留 RLS 和账号默认只读设置，不授予客户其他字段、写权限或转授权能力。其他勾稽关联表沿用既有授权。
+
+已在 Kingdee-ERP 项目应用迁移 `contract_reconciliation_partner_readonly`。新环境应先确认项目、法人映射、运行角色和现有策略，再由 DBA 执行模板；不要将此授权混入网页启动或 Vercel 构建。
+
+执行 `npm run db:check-contracts`，使用 `ERP_READONLY_DATABASE_URL` 验证 8 张关联表的所需列、集团订单客户匹配和权限边界。校验脚本只读，不打印客户明细、连接密码或修改权限。实际查询恢复后，合同页会自动停止显示权限故障提示，无需更改 Vercel 环境变量。
+
 不要将platform加入Data API exposed schemas。ERP和平台数据库必须与NEXT_PUBLIC_SUPABASE_URL的Auth项目匹配；当前迁移不支持把platform随意放到另一个空项目。
 
 ## 新环境与迁移历史

@@ -9,6 +9,7 @@
     "dev": "node scripts/dev.mjs",
     "env:check": "node scripts/check-env.mjs",
     "db:check": "node scripts/check-db.mjs",
+    "db:check-contracts": "node scripts/check-contract-access.mjs",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3100",
     "typecheck": "tsc --noEmit",
