@@ -3,6 +3,7 @@ export type GovernanceNavGroup = {
   title: string;
   description: string;
   pages: string[];
+  sections?: { title: string; pages: string[] }[];
 };
 export function governanceNavigation(
   view: "group" | "company",
@@ -38,13 +39,18 @@ export function governanceNavigation(
         {
           id: "business",
           title: "治理业务办理",
-          description: "上传材料、内部审核、提请集团",
+          description: "权限基础、决策履职、自查发现",
           pages: ["authority", "major", "meetings", "checks"],
+          sections: [
+            { title: "权限基础", pages: ["authority"] },
+            { title: "决策与履职", pages: ["major", "meetings"] },
+            { title: "监督检查", pages: ["checks"] },
+          ],
         },
         {
           id: "rectification",
-          title: "整改与验收",
-          description: "原事项关联、反馈证据与复核",
+          title: "问题闭环",
+          description: "跨四类业务 · 原事项关联、反馈与验收",
           pages: ["rectification"],
         },
         {

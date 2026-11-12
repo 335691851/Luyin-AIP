@@ -545,6 +545,124 @@ h1 {
 .governance-workbench-hub {
   margin: 14px 0;
 }
+.governance-relationship-panel {
+  background: #fff;
+  border: 1px solid #e1e6ed;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.governance-relation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(190px, 0.32fr);
+  align-items: end;
+  gap: 10px;
+}
+.governance-level-label {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+.governance-nav-level {
+  font-size: 9px;
+  color: #8b96a5;
+  padding: 7px 10px 3px;
+}
+.governance-domain-role {
+  display: block;
+  color: #6c839b;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+.governance-domain-links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.governance-domain-links a,
+.governance-closure-link {
+  display: block;
+  border: 1px solid #e1e6ed;
+  border-radius: 7px;
+  padding: 10px;
+  color: #475569;
+  font-size: 11px;
+}
+.governance-domain-links small,
+.governance-closure-link small {
+  display: block;
+  margin-top: 6px;
+  color: #8591a1;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.governance-domain-links a.active {
+  background: #edf5ff;
+  border-color: #91bbef;
+  color: #2e5e99;
+}
+.governance-closure-link {
+  background: #fffaf1;
+  border-color: #ead6af;
+  color: #966821;
+}
+.governance-closure-link.active {
+  background: #fff2db;
+  border-color: #c89945;
+}
+.governance-relation-arrow {
+  text-align: center;
+  align-self: center;
+  color: #9a804c;
+  font-size: 20px;
+  padding-top: 16px;
+}
+.governance-relation-arrow small {
+  display: block;
+  font-size: 9px;
+}
+.governance-relationship-panel > p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.governance-case-chain {
+  border: 1px solid #dce5ee;
+  border-left: 3px solid #5885b5;
+  border-radius: 7px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  background: #f8fafc;
+}
+.governance-case-chain p {
+  margin: 8px 0 0;
+  line-height: 1.7;
+}
+.governance-case-chain .ant-btn-link {
+  height: auto;
+  white-space: normal;
+  text-align: left;
+  padding: 0;
+}
+@media (max-width: 1000px) {
+  .governance-domain-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .governance-relation-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .governance-relation-arrow {
+    padding: 0;
+    font-size: 16px;
+  }
+  .governance-relation-arrow small {
+    display: inline;
+    margin-left: 8px;
+  }
+}
 .governance-workbench-hub .governance-routing-cards {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }

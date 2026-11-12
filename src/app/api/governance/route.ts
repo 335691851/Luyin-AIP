@@ -254,6 +254,26 @@ export async function POST(req: Request) {
       const r = rows[0];
       if (!r) throw Error("FORBIDDEN");
       if (r.item_kind === "archive") throw Error("FORBIDDEN");
+      if (r.item_kind === "rectification") {
+        const visited = new Set([String(r.id)]);
+        let sourceId = r.parent_id;
+        let valid = false;
+        while (sourceId && visited.size <= 32) {
+          if (visited.has(String(sourceId))) break;
+          visited.add(String(sourceId));
+          const [source] =
+            await t`select id,item_kind,parent_id from platform.governance_item where id=${sourceId} and company_id=${r.company_id} for update`;
+          if (!source) break;
+          if (source.item_kind !== "rectification") {
+            valid = ["action", "important_risk", "contract_risk"].includes(
+              source.item_kind,
+            );
+            break;
+          }
+          sourceId = source.parent_id;
+        }
+        if (!valid) throw Error("GOVERNANCE_SOURCE_REQUIRED");
+      }
       if (
         p.view === "company" &&
         p.action === "公司验收" &&
@@ -289,7 +309,10 @@ export async function POST(req: Request) {
       }
       await t`update platform.governance_item set status=${next},version=version+1,updated_at=now() where id=${r.id}`;
       await t`insert into platform.governance_item_event(item_id,actor_id,actor_name,perspective,action,note) values(${r.id},${u.id},${u.name},${p.view},${p.action},${op.data.note})`;
-      if (["要求整改", "审核退回"].includes(p.action)) {
+      if (
+        ["要求整改", "审核退回"].includes(p.action) &&
+        r.item_kind !== "rectification"
+      ) {
         const child =
           await t`insert into platform.governance_item(company_id,category,title,owner,deadline,basis,materials,finding,status,origin,created_by,data_source,source_refs,seed_key,scenario_version,item_kind,parent_id,payload) values(${r.company_id},${r.category},${"整改：" + r.title},${r.owner},current_date+7,${r.basis},${r.materials},${op.data.note},'需整改',${p.view},${u.id},${r.data_source},${t.json(r.source_refs || [])},${"rectify-v2:" + r.id + ":" + r.version},2,'rectification',${r.id},${t.json({ groupEscalated: p.view === "group" })}) on conflict(seed_key) do nothing returning id`;
         if (child.length)
@@ -318,6 +341,14 @@ export async function POST(req: Request) {
     });
     return Response.json({ ok: true });
   } catch (e) {
+    if (e instanceof Error && e.message === "GOVERNANCE_SOURCE_REQUIRED")
+      return Response.json(
+        {
+          error:
+            "整改任务缺少同一公司的有效原事项，请先核实并关联来源，再提交或验收。",
+        },
+        { status: 409 },
+      );
     if (e instanceof Error && e.message === "GOVERNANCE_OPEN_RECTIFICATIONS")
       return Response.json(
         { error: "关联整改尚未全部提交验收或关闭，不能提前归档销项" },

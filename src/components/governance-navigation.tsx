@@ -92,7 +92,21 @@ export default function GovernanceNavigation({
               className="governance-nav-children"
               hidden={!expanded[group.id]}
             >
-              {children.map((e) => link(e))}
+              {group.sections
+                ? group.sections.map((section) => {
+                    const visible = children.filter((e) =>
+                      section.pages.includes(e[0]),
+                    );
+                    return visible.length ? (
+                      <div key={section.title}>
+                        <div className="governance-nav-level">
+                          {section.title}
+                        </div>
+                        {visible.map((e) => link(e))}
+                      </div>
+                    ) : null;
+                  })
+                : children.map((e) => link(e))}
             </div>
           </section>
         );
