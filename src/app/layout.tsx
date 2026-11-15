@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import MobileViewport from "@/components/mobile-viewport";
 export const viewport: Viewport = {
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body>
         <MobileViewport />
         <AntdRegistry>{children}</AntdRegistry>
+        <Analytics />
       </body>
     </html>
   );
